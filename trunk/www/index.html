@@ -2,24 +2,32 @@
  <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title></title>
-<script src="/flowplayer.min.js"></script>
+   <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
 
  </head>
     <body>
-<a href="channels.txt">channels.txt</a> 
-<br>
-<a href="playlist.m3u">playlist.m3u</a>
 
-    <a href="http://192.168.11.6:50002/channel_1.stream"
-       style="display:block;width:425px;height:300px;"
-       id="player">
-    </a>
+<script>
+function printChannels(data)
+{
+	
+document.write("<a href=\"channels.txt\">channels.txt</a><br>");
+document.write("<a href=\"playlist.m3u\">playlist.m3u</a><br>");
 
-    <script language="JavaScript">
-      flowplayer("player", "flowplayer.swf");
-    </script>
-
-
+	var lines = data.split("\n");
+	for(var i=0;i<lines.length;i++)
+	{
+		var params = lines[i].split(";");
+		document.write("<br><a href=\"");
+		document.write(params[1]);
+		document.write("\">");
+		document.write(params[0]);
+		document.write("</a>");
+	}
+	
+}
+$.get("channels.txt",printChannels);
+</script>
  </body>
 </html>
 
