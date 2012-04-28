@@ -2,12 +2,23 @@
  <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title></title>
+<script src="/flowplayer.min.js"></script>
 
  </head>
     <body>
 <a href="channels.txt">channels.txt</a> 
 <br>
-<a href="playlist.m3u">playlist.m3u</a> 
+<a href="playlist.m3u">playlist.m3u</a>
+
+    <a href="http://192.168.11.6:50002/channel_1.stream"
+       style="display:block;width:425px;height:300px;"
+       id="player">
+    </a>
+
+    <script language="JavaScript">
+      flowplayer("player", "flowplayer.swf");
+    </script>
+
 
  </body>
 </html>
