@@ -95,7 +95,7 @@ void CVdrLinks::update()
 	    	l.name = name;
 	    	l.link = link;
 		stringstream tmp;
-		tmp<<"channel_"<<c<<".stream";
+		tmp<<"liveTv__"<<c<<".ts";
 		l.fileName = tmp.str();
 	    	links.push_back(l);
 		c++;
