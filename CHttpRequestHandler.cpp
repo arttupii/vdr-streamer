@@ -430,12 +430,19 @@ void CHttpRequestHandler::handleGetPost()
 			if(i1==string::npos) break;
 
 			name= urlDecoding(params.substr(0,i1));
-			params=params.substr(i1+1);
 			
-			i1=params.find(";");
+			if(i1>=params.length()-1)
+				params="";
+			else 
+				params=params.substr(i1+1);
+			
+			i1=params.find("&");
 			if(i1==string::npos) i1 = params.length();
 			value= urlDecoding(params.substr(0,i1));
-			params=params.substr(i1);
+			if(i1==params.length())
+			 	params="";
+			else
+			 	params=params.substr(i1+1);
 			
 			this->params[name]=value;
 			printf("name: \"%s\", value:\"%s\"  \n", name.c_str(), value.c_str());
