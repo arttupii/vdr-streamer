@@ -44,6 +44,8 @@ private:
 	map<string, string> content_type_map;
 	map<string,bool> allowed_files;
 
+	map<string,string> params;
+
 	string post_line;
 	string get_line;
 	int content_length;
