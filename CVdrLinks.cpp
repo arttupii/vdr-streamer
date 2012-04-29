@@ -76,6 +76,10 @@ void CVdrLinks::update()
 	printf("channels.m3u-link --> %s\n", cmd.c_str());
 	system(cmd.c_str());
 
+	string video_type=".ts";
+        ConfigFile::instance()->get_value("video_type", video_type);
+
+
 	ifstream infile;
 	infile.open("channels.m3u"); // open file
 	if(infile) {
@@ -95,7 +99,7 @@ void CVdrLinks::update()
 	    	l.name = name;
 	    	l.link = link;
 		stringstream tmp;
-		tmp<<"liveTv__"<<c<<".ts";
+		tmp<<"liveTv__"<<c<<video_type;
 		l.fileName = tmp.str();
 	    	links.push_back(l);
 		c++;
