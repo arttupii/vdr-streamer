@@ -7,3 +7,6 @@ streamer: main.o CSocket.o CHttpRequestHandler.o configfile/configfile.o CVdrLin
 	
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+clean:
+	rm -f *.o configfile/*.o
