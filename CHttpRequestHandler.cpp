@@ -107,7 +107,7 @@ string CHttpRequestHandler::getVirtualFile(string file)
 		list<VdrLink>::iterator it = links.begin();
 		for(;it!=links.end();it++)
 		{
-			data<<(*it).name<<";"<<"http://"<<host<<"/"<<(*it).fileName<<"\n";
+			data<<(*it).name<<";"<<(*it).fileName<<"\n";
 		}
 	}
 	if(file=="/playlist.m3u")
@@ -119,7 +119,14 @@ string CHttpRequestHandler::getVirtualFile(string file)
                 for(;it!=links.end();it++)
                 {
                         data<<"#EXTINF:-1,"<<i<<" "<<(*it).name<<"\n";
-			data<<"http://"<<host<<"/"<<(*it).fileName<<"\n";
+			if(params["serverUrl"].empty())
+			{
+				data<<"http://"<<host<<"/"<<(*it).fileName<<"\n";
+			}
+			else
+			{
+				 data<<params["serverUrl"]<<"/"<<(*it).fileName<<"\n";
+			}
 			i++;
                 }
 	}
@@ -393,6 +400,7 @@ void CHttpRequestHandler::clearParsetHeaderInfo()
 	content_length=0;
 	content.str("");
 	host="";
+	params.clear();	
 }
 void CHttpRequestHandler::handleGetPost()
 {
@@ -412,6 +420,26 @@ void CHttpRequestHandler::handleGetPost()
 		string params = line.substr(params_index+1);
 		params=params.substr(0, params.find(" "));
 		printf("Params: \"%s\"\n", params.c_str());
+
+		while(!params.empty())
+		{
+			string name="";
+			string value="";
+			size_t i1=params.find('=');
+			
+			if(i1==string::npos) break;
+
+			name= urlDecoding(params.substr(0,i1));
+			params=params.substr(i1+1);
+			
+			i1=params.find(";");
+			if(i1==string::npos) i1 = params.length();
+			value= urlDecoding(params.substr(0,i1));
+			params=params.substr(i1);
+			
+			this->params[name]=value;
+			printf("name: \"%s\", value:\"%s\"  \n", name.c_str(), value.c_str());
+		}
 	}
 
 	size_t file_index=line.find(" ");
@@ -495,6 +523,7 @@ void CHttpRequestHandler::handle()
 					handleGetPost();
 					printf("Handle http request end\n");
 					clearParsetHeaderInfo();
+					printf("END");
 					return;
 				}
 				line="";
