@@ -250,7 +250,6 @@ bool CHttpRequestHandler::handleStreamFile(string file)
 
 			printf("Pipe close\n");
 
-
 		/*
 		stringstream pid;
 		pid<<"pid_"<<this;
@@ -532,6 +531,7 @@ string CHttpRequestHandler::urlDecoding(string url)
 	}
 	return tmp;
 }
+
 
 /*
 #define READ 0
