@@ -7,7 +7,10 @@ OBS= main.o \
      CHttpRequestHandler.o \
      configfile/configfile.o \
      CVdrLinks.o \
-     CCommon.o
+     CCommon.o \
+     CVideoConverter.o \
+     CMutex.o \
+     CThread.o
 
 streamer: $(OBS) 
 	$(CXX) $(CXXFLAGS) $(LIBS) $^ -o $@
