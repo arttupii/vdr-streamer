@@ -24,6 +24,7 @@ using namespace std;
 #include <pthread.h>
 
 #include "CVdrLinks.h"
+#include "CVideoConverter.h"
 
 pid_t start_sub_process(string cmd)
 {
@@ -69,6 +70,9 @@ void termination_handler (int signum)
 
 int main()
 {
+	CVideoConverter::instance();
+	CVdrLinks::instance();
+
 
 	struct sigaction new_action, old_action;
 
