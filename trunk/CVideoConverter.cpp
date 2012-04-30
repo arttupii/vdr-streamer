@@ -57,6 +57,12 @@ vector<string> CVideoConverter::getInfo(string file)
 	if(x==string::npos || y==string::npos) return v;
 	string channel = tmp.substr(x, y-x);
 
+	x=tmp.find("E ")+2;
+	y=tmp.find("T ");
+	if(x==string::npos || y==string::npos) return v;
+	string info = tmp.substr(x, y-x);
+
+
 	x=tmp.find("T ")+2;
 	y=tmp.find("D ");
 	if(x==string::npos || y==string::npos) return v;
@@ -68,6 +74,7 @@ vector<string> CVideoConverter::getInfo(string file)
 	string description = tmp.substr(x, y-x);
 
 	v.push_back(converInfoString(channel));
+	v.push_back(converInfoString(info));
 	v.push_back(converInfoString(name));
 	v.push_back(converInfoString(description));
 	return v;
