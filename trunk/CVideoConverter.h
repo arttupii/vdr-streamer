@@ -13,6 +13,27 @@
 
 using namespace std;
 
+typedef struct{
+	string channel;
+	string name;
+	string info;
+	string description;
+	string folder;
+	string status;
+
+	string get()
+	{
+		stringstream ret;
+		ret<<channel<<";";
+		ret<<name<<";";
+		ret<<info<<";";
+		ret<<description<<";";
+		ret<<folder<<";";
+		ret<<status;
+		return ret.str();
+	}
+} VideoInfo;
+
 class CVideoConverter {
 private:
 	CVideoConverter();
