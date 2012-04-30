@@ -242,7 +242,7 @@ bool CHttpRequestHandler::handleStreamFile(string file)
 				}
 
 			}
-			printf("min %d, max%d, k=%d\n", min,max,k);
+			printf("min %u, max%u, k=%u\n", (unsigned int)min,(unsigned int)max,(unsigned int)k);
 			cmd.str("");
 			cmd<<"kill `cat "<<pid_file.str()<<"` ; rm "<<pid_file.str();
 			system(cmd.str().c_str());
@@ -365,7 +365,7 @@ void CHttpRequestHandler::sendFile(string file)
 		int i=0;
 		while(!virtualFile.empty())
 		{
-			int size=0;
+			size_t size=0;
 			if(virtualFile.length()<=1024) size=1024;
 			else size=virtualFile.length();
 			if(size==0) break;
