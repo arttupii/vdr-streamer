@@ -44,15 +44,12 @@ pid_t start_sub_process(string cmd)
 	return pID;
 }
                 
-
-
-
 #define CONFIG_FILE "vdr-streamer.conf"
 
 void *serverClient(void *socket)
 {
 	long c = (long)socket;
-	printf("Client connected %d", c);
+	printf("Client connected %d", (int)c);
 	CHttpRequestHandler rec(c);
 	rec.handle();
 	//sleep(1);
@@ -65,8 +62,6 @@ void termination_handler (int signum)
 	printf("EXIT\n");
 	exit(0);
 }
-
-
 
 int main()
 {

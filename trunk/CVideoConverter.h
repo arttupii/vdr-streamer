@@ -8,6 +8,9 @@
 #ifndef CVIDEOCONVERTER_H_
 #define CVIDEOCONVERTER_H_
 #include<string>
+#include<fstream>
+#include<vector>
+
 using namespace std;
 
 class CVideoConverter {
@@ -18,6 +21,10 @@ public:
 	static CVideoConverter *instance();
 
 	string getStatus();
+
+private:
+	vector<string> getInfo(string file);
+	string converInfoString(string x);
 };
 
 #endif /* CVIDEOCONVERTER_H_ */

@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-g -pthread
+CXXFLAGS=-g -pthread -std=c++0x 
 LIBS=-lm
 
 OBS= main.o \
