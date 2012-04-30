@@ -16,6 +16,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include "configfile/configfile.h"
+#include "CCommon.h"
 
 //pid_t popen2(const char *command, int *infp, int *outfp);
 
@@ -84,17 +85,14 @@ string CHttpRequestHandler::getContenType(string file)
 map<string,bool>  CHttpRequestHandler::get_allowed_files()
 {
 	map<string,bool>  ret;
-	struct dirent *dp;
-	        // enter existing path to directory below
-	const char *dir_path="./www/";
-	DIR *dir = opendir(dir_path);
-	while ((dp=readdir(dir)) != NULL)
+	const char *dir_path="./www";
+	vector<string> filelist;
+	CCommon::get_file_list(filelist, dir_path);
+	for(int i=0;i<filelist.size();i++)
 	{
-		string tmp = "/";
-		tmp+=dp->d_name;
-		ret[tmp]=true;
+		printf("%s\n", filelist[i].c_str());
+		ret[filelist[i]]=true;
 	}
-	closedir(dir);
 	return ret;
 }
 string CHttpRequestHandler::getVirtualFile(string file)
