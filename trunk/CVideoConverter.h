@@ -10,6 +10,7 @@
 #include<string>
 #include<fstream>
 #include<vector>
+#include <sstream>
 
 using namespace std;
 
@@ -43,9 +44,12 @@ public:
 
 	string getStatus();
 
+	void startVideoConverting(string folder);
+
 private:
 	vector<string> getInfo(string file);
 	string converInfoString(string x);
+	string vdr_video_folder;
 };
 
 #endif /* CVIDEOCONVERTER_H_ */
