@@ -7,10 +7,11 @@
 
 #include "CVideoConverter.h"
 #include <sstream>
+#include "CCommon.h"
 
 CVideoConverter::CVideoConverter() {
 	// TODO Auto-generated constructor stub
-
+	vdr_video_folder = "/home/video";
 }
 
 CVideoConverter::~CVideoConverter() {
@@ -26,9 +27,39 @@ CVideoConverter *CVideoConverter::instance()
 	}
 	return p;
 }
+
+void CVideoConverter::startVideoConverting(string folder)
+{
+
+}
+
 string CVideoConverter::getStatus()
 {
 	stringstream data;
+	vector<string> filelist;
+	CCommon::get_file_list(filelist, vdr_video_folder.c_str());
+
+	const string infofile = "/info";
+	for(int i=0;i<filelist.size();i++)
+	{
+		string file = filelist[i];
+		ssize_t info_index = file.find(infofile);
+
+		if( (info_index + infofile.length()) == file.length() )
+		{
+			string folder = file.substr(0,info_index);
+			vector<string> videoInfo = getInfo(vdr_video_folder + file);
+			if(!videoInfo.empty())
+			{
+				string channel = videoInfo[0];
+				string info = videoInfo[1];
+				string name = videoInfo[2];
+				string description = videoInfo[3];
+				string status = "IDLE";
+				data<<channel<<";"<<info<<";"<<name<<";"<<description<<";"<<folder<<";"<<status<<"\n";
+			}
+		}
+	}
 
 	return data.str();
 }
@@ -37,7 +68,7 @@ vector<string> CVideoConverter::getInfo(string file)
 {
 	string tmp="";
 	ifstream in;
-	in.open("info");
+	in.open(file.c_str());
 
 	if (in.is_open())
 	{
@@ -77,6 +108,7 @@ vector<string> CVideoConverter::getInfo(string file)
 	v.push_back(converInfoString(info));
 	v.push_back(converInfoString(name));
 	v.push_back(converInfoString(description));
+
 	return v;
 }
 

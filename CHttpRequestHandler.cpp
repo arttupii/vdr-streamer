@@ -17,6 +17,7 @@
 #include <signal.h>
 #include "configfile/configfile.h"
 #include "CCommon.h"
+#include "CVideoConverter.h"
 
 //pid_t popen2(const char *command, int *infp, int *outfp);
 
@@ -128,6 +129,14 @@ string CHttpRequestHandler::getVirtualFile(string file)
 			i++;
                 }
 	}
+	if(file=="/videolist.txt")
+	{
+		if(!params["convert"].empty())
+		{
+			CVideoConverter::instance()->startVideoConverting(params["convert"]);
+		}
+		return CVideoConverter::instance()->getStatus();
+	}
 	return data.str();
 }
 int CHttpRequestHandler::send_from_socket_to_another(int from, int to)
@@ -177,12 +186,6 @@ bool CHttpRequestHandler::handleStreamFile(string file)
 			pid_file<<"pid_"<<this;
 			stringstream cmd;
 			cmd<<"/bin/sh stream_script.sh "<<link<<" "<<pid_file.str();
-
-			//stringstream resp;
-			//resp<<"HTTP/1.0 200 OK\r\n";
-			//resp<<"Content-Type: video/"<<video_type<<"\r\n\r\n";
-
-			//send_to_socket(socket, resp.str().c_str(), resp.str().length());
 
 			printf("Open pipe\n");
 
@@ -255,48 +258,7 @@ bool CHttpRequestHandler::handleStreamFile(string file)
 
 			printf("Pipe close\n");
 
-		/*
-		stringstream pid;
-		pid<<"pid_"<<this;
-		startStreamScript(link.c_str(), 8086, pid.str().c_str());
-		sleep(5);
 
-		int vlc_socket = create_client("127.0.0.1", 8086);
-
-		stringstream req;
-		req<<"GET / HTTP/1.0\r\n";
-		req<<"Host: 127.0.0.1\r\n";
-		req<<"Connection: close\r\n";
-		req<<"User-Agent: streamer\r\n";
-		req<<"Accept-Charset: ISO-8859-1,UTF-8;q=0.7,*;q=0.7\r\n";
-		req<<"Cache-Control: no-cache\r\n";
-		req<<"Accept-Language: de,en;q=0.7,en-us;q=0.3\r\n\r\n";
-
-		send_to_socket(vlc_socket, req.str().c_str(), req.str().length());
-
-		while (vlc_socket>=0)
-		{
-			int ret;
-			bool sleep=false;
-			ret = send_from_socket_to_another(socket, vlc_socket);
-			if(ret<0) break;
-			if(ret==0) sleep=true;
-
-			ret = send_from_socket_to_another(vlc_socket, socket);
-			if(ret<0) break;
-			if(ret==0) sleep=true;
-
-			if(sleep) usleep(10000);
-		}
-
-		//kill(pSubProcess, SIGKILL);
-		stringstream cmd;
-		cmd<<"kill `cat "<<pid.str()<<"` ; rm "<<pid.str();
-		system(cmd.str().c_str());
-		printf("close socket + %s\n", cmd.str().c_str());
-		close(vlc_socket);
-		return true;
-		*/
 		return true;
 	}
 	return false;
@@ -567,38 +529,3 @@ string CHttpRequestHandler::urlDecoding(string url)
 }
 
 
-/*
-#define READ 0
-#define WRITE 1
-
-pid_t popen2(const char *command, int *readpipe, int *writepipe)
-{
-    int pipefd[2];
-    pid_t pid;
-
-    if (pipe(pipefd) != 0)
-        return -1;
-
-    pid = fork();
-
-    if (pid < 0)
-        return pid;
-    else if (pid == 0)
-    {
-    	dup2(pipefd[WRITE], STDOUT_FILENO);
-    	close(pipefd[READ]);
-
-    	system(command);
-        //execl("/bin/sh", "sh", "-c", command, NULL);
-        perror("execl");
-
-        close(pipefd[WRITE]);
-        exit(1);
-    }
-
-    if(readpipe==NULL) close(pipefd[READ]);
-    else *readpipe = pipefd[READ];
-    if(writepipe==NULL) close(pipefd[WRITE]);
-    else *writepipe=pipefd[WRITE];
-    return pid;
-}*/

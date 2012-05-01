@@ -68,7 +68,6 @@ int main()
 	CVideoConverter::instance();
 	CVdrLinks::instance();
 
-
 	struct sigaction new_action, old_action;
 
 	  /* Set up the structure to specify the new action. */
