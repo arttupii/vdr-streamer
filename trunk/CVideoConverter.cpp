@@ -8,10 +8,12 @@
 #include "CVideoConverter.h"
 #include <sstream>
 #include "CCommon.h"
+#include "configfile/configfile.h"
 
 CVideoConverter::CVideoConverter() {
 	// TODO Auto-generated constructor stub
 	vdr_video_folder = "/home/video";
+	ConfigFile::instance()->get_value("vdr_video_folder", vdr_video_folder);
 }
 
 CVideoConverter::~CVideoConverter() {
