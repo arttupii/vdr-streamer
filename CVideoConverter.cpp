@@ -9,13 +9,37 @@
 #include <sstream>
 #include "CCommon.h"
 #include "configfile/configfile.h"
+#include <pthread.h>
+#include <semaphore.h>
+
+sem_t task_sem;
+
+void *runUpdateVdrFilesTask(void *vc)
+{
+	while(1)
+	{
+		((CVideoConverter*)vc)->updateVideoInfoFromVdrDir();
+		sleep(60);
+	}
+	pthread_exit(NULL);
+}
 
 CVideoConverter::CVideoConverter() {
 	// TODO Auto-generated constructor stub
 	id_counter=0;
+	int max_count_video_tasks = 2;
 	vdr_video_folder = "/home/video";
 	ConfigFile::instance()->get_value("vdr_video_folder", vdr_video_folder);
+	ConfigFile::instance()->get_value("max_count_video_tasks", max_count_video_tasks);
 	updateVideoInfoFromVdrDir();
+	pthread_t thread;
+	int rc = pthread_create(&thread, NULL, runUpdateVdrFilesTask, (void *)this);
+	if (rc)
+	{
+		printf("ERROR; return code from pthread_create() is %d\n", rc);
+	}
+
+	sem_init(&task_sem, 0, max_count_video_tasks);
 }
 
 CVideoConverter::~CVideoConverter() {
@@ -32,17 +56,63 @@ CVideoConverter *CVideoConverter::instance()
 	return p;
 }
 
-void CVideoConverter::startVideoConverting(string id)
+typedef struct{
+	CVideoConverter *vc;
+	string folder;
+	string id;
+} TaskParams;
+
+
+void *runTask(void *_params)
+{
+	TaskParams *params = (TaskParams*)_params;
+	sem_wait(&task_sem);
+	params->vc->setVideoConvertingStatus(params->id, "ONGOING");
+	sleep(30);
+	params->vc->setVideoConvertingStatus(params->id, "DONE");
+
+	sem_post(&task_sem);
+	pthread_exit(NULL);
+}
+
+string CVideoConverter::startVideoConverting(string id)
 {
 	CQuard quard(mutex);
 	list<TaskInfo>::iterator it=findTaskInfo(id);
 	if(it!=tasks.end())
 	{
+		if((*it).status=="ONGOING" || (*it).status=="WAITING" )
+		{
+			return "already ongoing";
+		}
 		printf("Converting started... %s\n", it->folder.c_str());
+		TaskParams *params = new TaskParams;
+		(*it).status="WAITING";
+		params->folder=(*it).folder;
+		params->id=id;
+		params->vc=this;
+		pthread_t thread;
+		int rc = pthread_create(&thread, NULL, runTask, (void *)params);
+		if (rc)
+		{
+			printf("ERROR; return code from pthread_create() is %d\n", rc);
+		}
+		return "ok";
 	}
 	else
 	{
 		printf("Unkown id %s... Cannot start converting\n", id.c_str());
+	}
+	return "invalid id";
+}
+
+void CVideoConverter::setVideoConvertingStatus(string id, string status)
+{
+	CQuard quard(mutex);
+	list<TaskInfo>::iterator it=findTaskInfo(id);
+	if(it!=tasks.end())
+	{
+		(*it).status=status;
 	}
 }
 

@@ -138,9 +138,12 @@ string CHttpRequestHandler::getVirtualFile(string file)
 	{
 		if(!params["convert"].empty())
 		{
-			CVideoConverter::instance()->startVideoConverting(params["convert"]);
+			data<<CVideoConverter::instance()->startVideoConverting(params["convert"]);
 		}
-		data<<"OK";
+		else
+		{
+			data<<"error";
+		}
 	}
 	return data.str();
 }
