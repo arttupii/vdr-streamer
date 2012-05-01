@@ -1,0 +1,60 @@
+
+<html>
+ <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>VDR-STREAMER-Video-Convert</title>
+   <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+
+ </head>
+    <body>
+
+<script>
+
+function server_name(){
+	var url = window.location.href;
+	var index = url.lastIndexOf("/");
+	if(index<0)
+	{
+		return url;
+	}
+	return url.substring(0,index);
+}
+
+function epocToHuman(epoc)
+{
+	var date = new Date( parseFloat(epoc) *1000 );
+	return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+}
+function printChannels(data)
+{
+	document.write( "Server: " + server_name() + "<br>");
+	
+	var lines = data.split("\n");
+	
+	document.write("<table>");
+	for(var i=0;i<lines.length;i++)
+	{
+		var params = lines[i].split(";");
+		var info = params[1].split(" ");
+		
+		var date = epocToHuman(info[1]);
+		var length = info[2]/60;
+		var channel = params[0];
+		var name = params[2];
+		var description = params[3];
+		var folder = params[4];
+		var status = params[5];
+		
+		document.write("<tr>");
+		document.write("<td>" + date + "</td>");
+		document.write( "<td><a href=\"" + "convert.html?convert=" + folder + "\" title=\"" + description + "\">" + " " + name + " [" + length + "]</a><td>\n");
+		document.write("<td>" + status + "</td>");
+		document.write("<tr>");
+	}
+	document.write("</table>");
+}
+$.get("videolist.txt",printChannels);
+</script>
+ </body>
+</html>
+
