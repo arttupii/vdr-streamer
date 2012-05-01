@@ -91,7 +91,7 @@ map<string,bool>  CHttpRequestHandler::get_allowed_files()
 	CCommon::get_file_list(filelist, dir_path);
 	for(int i=0;i<filelist.size();i++)
 	{
-		printf("%s\n", filelist[i].c_str());
+		//printf("%s\n", filelist[i].c_str());
 		ret[filelist[i]]=true;
 	}
 	return ret;
@@ -131,11 +131,16 @@ string CHttpRequestHandler::getVirtualFile(string file)
 	}
 	if(file=="/videolist.txt")
 	{
+		return CVideoConverter::instance()->getStatus();
+	}
+
+	if(file=="/convert.run")
+	{
 		if(!params["convert"].empty())
 		{
 			CVideoConverter::instance()->startVideoConverting(params["convert"]);
 		}
-		return CVideoConverter::instance()->getStatus();
+		data<<"OK";
 	}
 	return data.str();
 }
@@ -328,7 +333,7 @@ void CHttpRequestHandler::sendFile(string file)
 		while(!virtualFile.empty())
 		{
 			size_t size=0;
-			if(virtualFile.length()<=1024) size=1024;
+			if(virtualFile.length()>=1024) size=1024;
 			else size=virtualFile.length();
 			if(size==0) break;
 
@@ -377,35 +382,36 @@ void CHttpRequestHandler::handleGetPost()
 	size_t params_index = line.find("?");
 	if(params_index!=string::npos)
 	{
-		string params = line.substr(params_index+1);
-		params=params.substr(0, params.find(" "));
-		printf("Params: \"%s\"\n", params.c_str());
+		string sparams = line.substr(params_index+1);
+		sparams=sparams.substr(0, sparams.find(" "));
+		printf("Params: \"%s\"\n", sparams.c_str());
 
-		while(!params.empty())
+		while(!sparams.empty())
 		{
 			string name="";
 			string value="";
-			size_t i1=params.find('=');
+			size_t i1=sparams.find('=');
 			
 			if(i1==string::npos) break;
 
-			name= urlDecoding(params.substr(0,i1));
+			name= urlDecoding(sparams.substr(0,i1));
 			
-			if(i1>=params.length()-1)
-				params="";
+			if(i1>=sparams.length()-1)
+				sparams="";
 			else 
-				params=params.substr(i1+1);
+				sparams=sparams.substr(i1+1);
 			
-			i1=params.find("&");
-			if(i1==string::npos) i1 = params.length();
-			value= urlDecoding(params.substr(0,i1));
-			if(i1==params.length())
-			 	params="";
+			i1=sparams.find("&");
+			if(i1==string::npos) i1 = sparams.length();
+			value= urlDecoding(sparams.substr(0,i1));
+			if(i1==sparams.length())
+				sparams="";
 			else
-			 	params=params.substr(i1+1);
+				sparams=sparams.substr(i1+1);
 			
-			this->params[name]=value;
-			printf("name: \"%s\", value:\"%s\"  \n", name.c_str(), value.c_str());
+			params[name]=value;
+			printf("name: \"%s\", value:\"%s\"  %d\n", name.c_str(), value.c_str(), name.length());
+			printf("FFwname: \"%s\", value:\"%s\"  \n", name.c_str(), this->params["convert"].c_str());
 		}
 	}
 

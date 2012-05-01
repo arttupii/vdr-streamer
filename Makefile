@@ -9,8 +9,7 @@ OBS= main.o \
      CVdrLinks.o \
      CCommon.o \
      CVideoConverter.o \
-     CMutex.o \
-     CThread.o
+     CMutex.o 
 
 streamer: $(OBS) 
 	$(CXX) $(CXXFLAGS) $(LIBS) $^ -o $@

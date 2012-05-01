@@ -11,10 +11,12 @@
 #include<fstream>
 #include<vector>
 #include<sstream>
-#include<map>
-#include"CThread.h"
+#include<list>
 
+#include"CMutex.h"
 using namespace std;
+class CVideoConverter;
+
 
 typedef struct{
 	string channel;
@@ -22,20 +24,12 @@ typedef struct{
 	string info;
 	string description;
 	string folder;
+	string id;
 	string status;
+	bool taskRunning;
+} TaskInfo;
 
-	string get()
-	{
-		stringstream ret;
-		ret<<channel<<";";
-		ret<<name<<";";
-		ret<<info<<";";
-		ret<<description<<";";
-		ret<<folder<<";";
-		ret<<status;
-		return ret.str();
-	}
-} VideoInfo;
+
 
 class CVideoConverter {
 private:
@@ -46,21 +40,22 @@ public:
 
 	string getStatus();
 
-	void startVideoConverting(string folder);
-
-	class Task
-	{
-	public:
-		Task(CVideoConverter *vc, string folder);
-		~Task();
-	private:
-		void run();
-	};
+	void startVideoConverting(string id);
+	void stopVideoConverting(string id);
+	void videoConvertingReady(string id, string status);
 private:
+	void updateVideoInfoFromVdrDir();
+
+	list<TaskInfo>::iterator findTaskInfo(string id);
+
 	vector<string> getInfo(string file);
 	string converInfoString(string x);
 	string vdr_video_folder;
-	map<string, VideoInfo> tasks;
+	int id_counter;
+
+	list<TaskInfo> tasks;
+	friend class Task;
+	CMutex mutex;
 };
 
 #endif /* CVIDEOCONVERTER_H_ */
