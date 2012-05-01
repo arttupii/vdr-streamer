@@ -53,7 +53,14 @@ function printChannels(data)
 	}
 	document.write("</table>");
 }
-$.get("videolist.txt",printChannels);
+function update()
+{
+  $.get("videolist.txt",printChannels);
+  //setTimeout(update, 5000);
+}
+
+update();
+
 </script>
  </body>
 </html>
