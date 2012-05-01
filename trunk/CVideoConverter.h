@@ -40,9 +40,9 @@ public:
 
 	string getStatus();
 
-	void startVideoConverting(string id);
-	void stopVideoConverting(string id);
-	void videoConvertingReady(string id, string status);
+	string startVideoConverting(string id);
+	void setVideoConvertingStatus(string id, string status);
+
 private:
 	void updateVideoInfoFromVdrDir();
 
@@ -55,6 +55,7 @@ private:
 
 	list<TaskInfo> tasks;
 	friend class Task;
+	friend void *runUpdateVdrFilesTask(void*);
 	CMutex mutex;
 };
 
