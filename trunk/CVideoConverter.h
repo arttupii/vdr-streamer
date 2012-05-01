@@ -50,6 +50,7 @@ private:
 	vector<string> getInfo(string file);
 	string converInfoString(string x);
 	string vdr_video_folder;
+	map<string, VideoInfo> tasks;
 };
 
 #endif /* CVIDEOCONVERTER_H_ */
