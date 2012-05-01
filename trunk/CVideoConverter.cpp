@@ -12,8 +12,10 @@
 
 CVideoConverter::CVideoConverter() {
 	// TODO Auto-generated constructor stub
+	id_counter=0;
 	vdr_video_folder = "/home/video";
 	ConfigFile::instance()->get_value("vdr_video_folder", vdr_video_folder);
+	updateVideoInfoFromVdrDir();
 }
 
 CVideoConverter::~CVideoConverter() {
@@ -30,14 +32,36 @@ CVideoConverter *CVideoConverter::instance()
 	return p;
 }
 
-void CVideoConverter::startVideoConverting(string folder)
+void CVideoConverter::startVideoConverting(string id)
 {
-
+	CQuard quard(mutex);
+	list<TaskInfo>::iterator it=findTaskInfo(id);
+	if(it!=tasks.end())
+	{
+		printf("Converting started... %s\n", it->folder.c_str());
+	}
+	else
+	{
+		printf("Unkown id %s... Cannot start converting\n", id.c_str());
+	}
 }
 
-string CVideoConverter::getStatus()
+list<TaskInfo>::iterator CVideoConverter::findTaskInfo(string id)
 {
-	stringstream data;
+	list<TaskInfo>::iterator it=tasks.begin();
+
+	for(;it!=tasks.end();it++)
+	{
+		if((*it).id==id)
+		{
+			return it;
+		}
+	}
+	return tasks.end();
+}
+
+void CVideoConverter::updateVideoInfoFromVdrDir()
+{
 	vector<string> filelist;
 	CCommon::get_file_list(filelist, vdr_video_folder.c_str());
 
@@ -53,14 +77,56 @@ string CVideoConverter::getStatus()
 			vector<string> videoInfo = getInfo(vdr_video_folder + file);
 			if(!videoInfo.empty())
 			{
+				CQuard quard(mutex);
+
 				string channel = videoInfo[0];
 				string info = videoInfo[1];
 				string name = videoInfo[2];
 				string description = videoInfo[3];
 				string status = "IDLE";
-				data<<channel<<";"<<info<<";"<<name<<";"<<description<<";"<<folder<<";"<<status<<"\n";
+
+				list<TaskInfo>::iterator it=tasks.begin();
+				bool found=false;
+				for(;it!=tasks.end();it++)
+				{
+					if((*it).folder==folder)
+					{
+						found=true;
+						break;
+					}
+				}
+				if(found==false)
+				{
+					TaskInfo t;
+					t.channel=channel;
+					t.name=name;
+					t.info=info;
+					t.description=description;
+					t.folder=folder;
+					t.status=status;
+					t.taskRunning=false;
+
+					stringstream id;
+					id<<id_counter;
+					id_counter++;
+					t.id=id.str();
+					tasks.push_back(t);
+				}
 			}
 		}
+	}
+}
+
+string CVideoConverter::getStatus()
+{
+	CQuard quard(mutex);
+	stringstream data;
+	list<TaskInfo>::iterator it=tasks.begin();
+	for(;it!=tasks.end();it++)
+	{
+		TaskInfo ti = *it;
+
+		data<<ti.channel<<";"<<ti.info<<";"<<ti.name<<";"<<ti.description<<";"<<ti.id<<";"<<ti.status<<"\n";
 	}
 
 	return data.str();
@@ -132,16 +198,5 @@ string CVideoConverter::converInfoString(string x)
 	}
 	return x;
 }
-CVideoConverter::Task::Task(CVideoConverter *vc, string folder)
-{
 
-}
-CVideoConverter::Task::~Task()
-{
-
-}
-void CVideoConverter::Task::run()
-{
-
-}
 
