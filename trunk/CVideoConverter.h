@@ -10,7 +10,9 @@
 #include<string>
 #include<fstream>
 #include<vector>
-#include <sstream>
+#include<sstream>
+#include<map>
+#include"CThread.h"
 
 using namespace std;
 
@@ -46,6 +48,14 @@ public:
 
 	void startVideoConverting(string folder);
 
+	class Task
+	{
+	public:
+		Task(CVideoConverter *vc, string folder);
+		~Task();
+	private:
+		void run();
+	};
 private:
 	vector<string> getInfo(string file);
 	string converInfoString(string x);
