@@ -132,3 +132,16 @@ string CVideoConverter::converInfoString(string x)
 	}
 	return x;
 }
+CVideoConverter::Task::Task(CVideoConverter *vc, string folder)
+{
+
+}
+CVideoConverter::Task::~Task()
+{
+
+}
+void CVideoConverter::Task::run()
+{
+
+}
+
