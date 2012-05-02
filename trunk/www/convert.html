@@ -8,6 +8,20 @@
 
  </head>
     <body>
+	
+<style type="text/css">
+body { background: #FFF }
+.yellowThing {
+background: #FF9;
+}
+.whiteThing {
+background: #FFF;
+}
+.redThing {
+background: #F00;
+}
+
+</style>
 
 <script>
 
@@ -26,13 +40,46 @@ function epocToHuman(epoc)
 	var date = new Date( parseFloat(epoc) *1000 );
 	return date.toLocaleDateString() + " " + date.toLocaleTimeString();
 }
-function printChannels(data)
+
+
+function changeColor(idObj, colorObj) 
+{ 
+        //  document.getElementById(idObj.id).style.background = "";//colorObj; 
+		//	document.write("AAAAAAAA" + colorObj);
+}
+
+function doAction(idObj)
 {
-	document.write( "Server: " + server_name() + "<br>");
-	
+	if(document.getElementById("status_" + idObj.id).innerHTML=="WAITING" ||
+	document.getElementById("status_" + idObj.id).innerHTML=="ONGOING")
+	{
+		var r=confirm("Do you really want to cancel?");
+		if(r)
+		{
+			$.get("convert.run?stop=" + idObj.id, null);
+			$.get("videolist.txt",updateStatus);
+		}
+	}
+	else
+	{
+		if(document.getElementById("status_" + idObj.id).innerHTML=="DONE")
+		{
+			var r=confirm("Hi dude, Do you really want to do this again???");
+			if(!r)
+			{
+				return;
+			}
+		}
+		$.get("convert.run?convert=" + idObj.id, null);
+		document.getElementById(idObj.id).style.background = 'YELLOW';
+		$.get("videolist.txt",updateStatus);
+	}
+}
+
+function updateStatus(data)
+{
 	var lines = data.split("\n");
 	
-	document.write("<table>");
 	for(var i=0;i<lines.length;i++)
 	{
 		var params = lines[i].split(";");
@@ -43,23 +90,58 @@ function printChannels(data)
 		var channel = params[0];
 		var name = params[2];
 		var description = params[3];
-		var folder = params[4];
+		var id = params[4];
 		var status = params[5];
+
+
 		
-		document.write("<tr>");
-		document.write("<td>" + date + "</td>");
-		document.write( "<td><a href=\"" + "convert.run?convert=" + folder + "\" method=\"post\" title=\"" + description + "\">" + " " + name + " [" + length + "]</a><td>\n");
-		document.write("<td>" + status + "</td>");
-		document.write("<tr>");
+		document.getElementById("status_" + id).innerHTML = status;
+		if(status=="ONGOING" || status=="WAITING")
+			document.getElementById(id).style.background = 'YELLOW';
+		if(status=="DONE")
+			document.getElementById(id).style.background = 'GREEN';		
 	}
 	document.write("</table>");
 }
-function update()
+
+function printChannels(data)
 {
-  $.get("videolist.txt",printChannels);
-  //setTimeout(update, 5000);
+	document.write( "Server: " + server_name() + "<br>");
+	document.write("<a href=\"index.html\">index.html</a><br>");
+	var lines = data.split("\n");
+	
+	document.write("<table border=\"0.5\">");
+	for(var i=0;i<lines.length;i++)
+	{
+		var params = lines[i].split(";");
+		var info = params[1].split(" ");
+		
+		var date = epocToHuman(info[1]);
+		var length = info[2]/60;
+		var channel = params[0];
+		var name = params[2];
+		var description = params[3];
+		var id = params[4];
+		var status = params[5];
+
+		document.write('<tr id="' + id + '" title="' + description + '" onclick="doAction(this)" ' + 
+		' onmouseover="changeColor(this,\'green\')" onmouseout="changeColor(this,\'white\')">');
+		document.write( "<td>" + date + "<td>\n");
+		document.write( "<td>" + name + " [" + length + "]<td>\n");
+		
+		document.write("<td id=status_" + id + ">" + status + "</td>");
+		document.write("</tr>");
+	}
+	document.write("</table>");
 }
 
+function update()
+{
+  $.get("videolist.txt",updateStatus);
+  setTimeout(update, 5000);
+}
+
+$.get("videolist.txt",printChannels);
 update();
 
 </script>
