@@ -29,6 +29,8 @@ typedef struct{
 	bool taskRunning;
 	pthread_t thread;
 	string pid_file;
+
+	string target_file;
 } TaskInfo;
 
 
@@ -54,6 +56,8 @@ private:
 	vector<string> getInfo(string file);
 	string converInfoString(string x);
 	string vdr_video_folder;
+	string video_output_folder;
+
 	int id_counter;
 
 	list<TaskInfo> tasks;
