@@ -9,20 +9,6 @@
  </head>
     <body>
 	
-<style type="text/css">
-body { background: #FFF }
-.yellowThing {
-background: #FF9;
-}
-.whiteThing {
-background: #FFF;
-}
-.redThing {
-background: #F00;
-}
-
-</style>
-
 <script>
 
 function server_name(){
@@ -104,7 +90,7 @@ function updateStatus(data)
 	document.write("</table>");
 }
 
-function printChannels(data)
+function printVideos(data)
 {
 	document.write( "Server: " + server_name() + "<br>");
 	document.write("<a href=\"index.html\">index.html</a><br>");
@@ -141,7 +127,7 @@ function update()
   setTimeout(update, 5000);
 }
 
-$.get("videolist.txt",printChannels);
+$.get("videolist.txt",printVideos);
 update();
 
 </script>
