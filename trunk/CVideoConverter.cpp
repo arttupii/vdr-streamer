@@ -29,8 +29,11 @@ CVideoConverter::CVideoConverter() {
 	id_counter=0;
 	int max_count_video_tasks = 2;
 	vdr_video_folder = "/home/video";
+	video_output_folder = "www/video";
 	ConfigFile::instance()->get_value("vdr_video_folder", vdr_video_folder);
 	ConfigFile::instance()->get_value("max_count_video_tasks", max_count_video_tasks);
+	ConfigFile::instance()->get_value("video_output_folder", video_output_folder);
+
 	updateVideoInfoFromVdrDir();
 	pthread_t thread;
 	int rc = pthread_create(&thread, NULL, runUpdateVdrFilesTask, (void *)this);
@@ -59,6 +62,8 @@ CVideoConverter *CVideoConverter::instance()
 typedef struct{
 	CVideoConverter *vc;
 	string source;
+	string target_folder;
+	string target_file;
 	string id;
 	string pid_file;
 } TaskParams;
@@ -71,7 +76,7 @@ void *runTask(void *_params)
 	params->vc->setVideoConvertingStatus(params->id, "ONGOING");
 
 	stringstream cmd;
-	cmd<<"/bin/sh convert_script.sh "<<params->source<<" "<<params->pid_file;
+	cmd<<"/bin/sh convert_script.sh \""<<params->source<<"\" \""<<params->target_folder<<"\" \""<<params->target_file<<"\" "<<params->pid_file;
 
 	system(cmd.str().c_str());
 
@@ -93,6 +98,11 @@ string CVideoConverter::stopVideoConverting(string id)
 			stringstream cmd;
 			cmd<<"kill `cat "<<(*it).pid_file<<"` ; rm "<<(*it).pid_file;
 			system(cmd.str().c_str());
+
+			cmd.str("");
+			cmd<<"rm -f "<<(*it).target_file;
+			system(cmd.str().c_str());
+
 			return "ok";
 		}
 	}
@@ -117,6 +127,10 @@ string CVideoConverter::startVideoConverting(string id)
 		params->id=id;
 		params->vc=this;
 		params->pid_file=(*it).pid_file;
+		params->target_folder=video_output_folder;
+		params->target_file=id + string("_") + (*it).name;
+
+		(*it).target_file = params->target_folder +string("/") + params->target_file;
 		pthread_t thread;
 		int rc = pthread_create(&thread, NULL, runTask, (void *)params);
 		(*it).thread = thread;
@@ -287,6 +301,7 @@ string CVideoConverter::converInfoString(string x)
 		case ';':
 		case ':':
 		case '\r':
+		case '"':
 			x[i]=' ';
 		break;
 		default:
