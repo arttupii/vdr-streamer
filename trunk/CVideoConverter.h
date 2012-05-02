@@ -27,6 +27,8 @@ typedef struct{
 	string id;
 	string status;
 	bool taskRunning;
+	pthread_t thread;
+	string pid_file;
 } TaskInfo;
 
 
@@ -41,6 +43,7 @@ public:
 	string getStatus();
 
 	string startVideoConverting(string id);
+	string stopVideoConverting(string id);
 	void setVideoConvertingStatus(string id, string status);
 
 private:

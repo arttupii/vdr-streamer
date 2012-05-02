@@ -58,8 +58,9 @@ CVideoConverter *CVideoConverter::instance()
 
 typedef struct{
 	CVideoConverter *vc;
-	string folder;
+	string source;
 	string id;
+	string pid_file;
 } TaskParams;
 
 
@@ -68,13 +69,36 @@ void *runTask(void *_params)
 	TaskParams *params = (TaskParams*)_params;
 	sem_wait(&task_sem);
 	params->vc->setVideoConvertingStatus(params->id, "ONGOING");
-	sleep(30);
+
+	stringstream cmd;
+	cmd<<"/bin/sh convert_script.sh "<<params->source<<" "<<params->pid_file;
+
+	system(cmd.str().c_str());
+
 	params->vc->setVideoConvertingStatus(params->id, "DONE");
 
 	sem_post(&task_sem);
 	pthread_exit(NULL);
 }
+string CVideoConverter::stopVideoConverting(string id)
+{
+	CQuard quard(mutex);
+	list<TaskInfo>::iterator it=findTaskInfo(id);
+	if(it!=tasks.end())
+	{
+		if((*it).status=="ONGOING" || (*it).status=="WAITING" )
+		{
+			pthread_cancel((*it).thread);
+			(*it).status="STOPPED";
+			stringstream cmd;
+			cmd<<"kill `cat "<<(*it).pid_file<<"` ; rm "<<(*it).pid_file;
+			system(cmd.str().c_str());
+			return "ok";
+		}
+	}
 
+	return "error";
+}
 string CVideoConverter::startVideoConverting(string id)
 {
 	CQuard quard(mutex);
@@ -88,11 +112,14 @@ string CVideoConverter::startVideoConverting(string id)
 		printf("Converting started... %s\n", it->folder.c_str());
 		TaskParams *params = new TaskParams;
 		(*it).status="WAITING";
-		params->folder=(*it).folder;
+		(*it).pid_file = string("pid_convert_")+id;
+		params->source=vdr_video_folder + "/" + (*it).folder;
 		params->id=id;
 		params->vc=this;
+		params->pid_file=(*it).pid_file;
 		pthread_t thread;
 		int rc = pthread_create(&thread, NULL, runTask, (void *)params);
+		(*it).thread = thread;
 		if (rc)
 		{
 			printf("ERROR; return code from pthread_create() is %d\n", rc);
