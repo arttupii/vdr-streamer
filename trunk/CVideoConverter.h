@@ -47,7 +47,7 @@ public:
 	string startVideoConverting(string id);
 	string stopVideoConverting(string id);
 	void setVideoConvertingStatus(string id, string status);
-
+	string getVideoConvertingStatus(string id);
 private:
 	void updateVideoInfoFromVdrDir();
 

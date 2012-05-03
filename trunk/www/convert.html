@@ -11,6 +11,8 @@
 	
 <script>
 
+var statuscolormap = {};
+
 function server_name(){
 	var url = window.location.href;
 	var index = url.lastIndexOf("/");
@@ -28,10 +30,13 @@ function epocToHuman(epoc)
 }
 
 
-function changeColor(idObj, colorObj) 
-{ 
-        //  document.getElementById(idObj.id).style.background = "";//colorObj; 
-		//	document.write("AAAAAAAA" + colorObj);
+function changeBackgroundBack(idObj)
+{
+		document.getElementById(idObj.id).style.background = statuscolormap[idObj.id];
+}
+function changeItBackground(idObj)
+{
+		document.getElementById(idObj.id).style.background = "BLUE";
 }
 
 function doAction(idObj)
@@ -44,6 +49,8 @@ function doAction(idObj)
 		{
 			$.get("convert.run?stop=" + idObj.id, null);
 			$.get("videolist.txt",updateStatus);
+			document.getElementById(idObj.id).style.background = 'WHITE';
+			statuscolormap[idObj.id]="WHITE";
 		}
 	}
 	else
@@ -58,6 +65,7 @@ function doAction(idObj)
 		}
 		$.get("convert.run?convert=" + idObj.id, null);
 		document.getElementById(idObj.id).style.background = 'YELLOW';
+		statuscolormap[idObj.id]="YELLOW";
 		$.get("videolist.txt",updateStatus);
 	}
 }
@@ -81,11 +89,19 @@ function updateStatus(data)
 
 
 		
+		
 		document.getElementById("status_" + id).innerHTML = status;
-		if(status=="ONGOING" || status=="WAITING")
+		if(status=="ONGOING" || status=="WAITING" || status=="STOPPING")
+		{
+			statuscolormap[id]="YELLOW";
 			document.getElementById(id).style.background = 'YELLOW';
+			
+		}
 		if(status=="DONE")
+		{
 			document.getElementById(id).style.background = 'GREEN';		
+			statuscolormap[id]="GREEN";
+		}
 	}
 	document.write("</table>");
 }
@@ -110,8 +126,10 @@ function printVideos(data)
 		var id = params[4];
 		var status = params[5];
 
+		//statuscolormap[id] = "WHITE";
+		statuscolormap[id]="WHITE";
 		document.write('<tr id="' + id + '" title="' + description + '" onclick="doAction(this)" ' + 
-		' onmouseover="changeColor(this,\'green\')" onmouseout="changeColor(this,\'white\')">');
+		' onmouseover="changeItBackground(this)" onmouseout="changeBackgroundBack(this)">');
 		document.write( "<td>" + date + "<td>\n");
 		document.write( "<td>" + name + " [" + length + "]<td>\n");
 		

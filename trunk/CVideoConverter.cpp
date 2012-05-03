@@ -11,6 +11,9 @@
 #include "configfile/configfile.h"
 #include <pthread.h>
 #include <semaphore.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
 
 sem_t task_sem;
 
@@ -72,17 +75,69 @@ typedef struct{
 void *runTask(void *_params)
 {
 	TaskParams *params = (TaskParams*)_params;
+
 	sem_wait(&task_sem);
-	params->vc->setVideoConvertingStatus(params->id, "ONGOING");
 
-	stringstream cmd;
-	cmd<<"/bin/sh convert_script.sh \""<<params->source<<"\" \""<<params->target_folder<<"\" \""<<params->target_file<<"\" "<<params->pid_file;
+	if(params->vc->getVideoConvertingStatus(params->id)!="STOPPING" && params->vc->getVideoConvertingStatus(params->id)=="WAITING")
+	{
+		pid_t pid = fork();
 
-	system(cmd.str().c_str());
+		if(pid==0)
+		{
+			stringstream cmd;
+			cmd<<"/bin/sh convert_script.sh \""<<params->source<<"\" \""<<params->target_folder<<"\" \""<<params->target_file<<"\" "<<params->pid_file;
+			system(cmd.str().c_str());
+			exit(1);
+		}
 
-	params->vc->setVideoConvertingStatus(params->id, "DONE");
+		if(pid>0)
+		{
+			while(true)
+			{
+				if(params->vc->getVideoConvertingStatus(params->id)=="STOPPING")
+				{
+					stringstream cmd;
+					cmd<<"kill `cat "<<params->pid_file<<"` ; rm -f "<<params->pid_file;
+					system(cmd.str().c_str());
+					cmd.str("");
+					cmd<<"rm -f \""<<params->target_folder<<"/"<<params->target_file<<"\"*";
+					system(cmd.str().c_str());
+					params->vc->setVideoConvertingStatus(params->id, "STOPPED");
+					break;
+				}
 
+				if(params->vc->getVideoConvertingStatus(params->id)=="WAITING")
+				{
+					params->vc->setVideoConvertingStatus(params->id, "ONGOING");
+				}
+
+				int status;
+				pid_t rep = waitpid(pid, &status, WNOHANG);
+
+				if(rep<0)
+				{
+					printf("Error occured during task\n");
+					break;
+				}
+				if(rep>0)
+				{
+					params->vc->setVideoConvertingStatus(params->id, "DONE");
+					break;
+				}
+				sleep(5);
+			}
+		}
+		else
+		{
+			params->vc->setVideoConvertingStatus(params->id, "ERROR");
+		}
+	}
+	else
+	{
+		params->vc->setVideoConvertingStatus(params->id, "STOPPED");
+	}
 	sem_post(&task_sem);
+
 	pthread_exit(NULL);
 }
 string CVideoConverter::stopVideoConverting(string id)
@@ -91,18 +146,9 @@ string CVideoConverter::stopVideoConverting(string id)
 	list<TaskInfo>::iterator it=findTaskInfo(id);
 	if(it!=tasks.end())
 	{
-		if((*it).status=="ONGOING" || (*it).status=="WAITING" )
+		if( ((*it).status=="ONGOING" || (*it).status=="WAITING") && (*it).status!="STOPPING" )
 		{
-			pthread_cancel((*it).thread);
-			(*it).status="STOPPED";
-			stringstream cmd;
-			cmd<<"kill `cat "<<(*it).pid_file<<"` ; rm "<<(*it).pid_file;
-			system(cmd.str().c_str());
-
-			cmd.str("");
-			cmd<<"rm -f "<<(*it).target_file;
-			system(cmd.str().c_str());
-
+			(*it).status="STOPPING";
 			return "ok";
 		}
 	}
@@ -115,7 +161,7 @@ string CVideoConverter::startVideoConverting(string id)
 	list<TaskInfo>::iterator it=findTaskInfo(id);
 	if(it!=tasks.end())
 	{
-		if((*it).status=="ONGOING" || (*it).status=="WAITING" )
+		if((*it).status=="ONGOING" || (*it).status=="WAITING" || (*it).status=="STOPPING")
 		{
 			return "already ongoing";
 		}
@@ -156,7 +202,16 @@ void CVideoConverter::setVideoConvertingStatus(string id, string status)
 		(*it).status=status;
 	}
 }
-
+string CVideoConverter::getVideoConvertingStatus(string id)
+{
+	CQuard quard(mutex);
+	list<TaskInfo>::iterator it=findTaskInfo(id);
+	if(it!=tasks.end())
+	{
+		return (*it).status;
+	}
+	return "";
+}
 list<TaskInfo>::iterator CVideoConverter::findTaskInfo(string id)
 {
 	list<TaskInfo>::iterator it=tasks.begin();
