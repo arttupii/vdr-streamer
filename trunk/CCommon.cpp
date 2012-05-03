@@ -36,6 +36,11 @@ void CCommon::get_file_list(vector<string> &fileList, const char *dir_path, int 
 	}
 
 	DIR *dir = opendir(dir_path);
+	if(dir==NULL)
+	{
+		printf(" CCommon::get_file_list, invalid folder %s\n", dir_path);
+		exit(1);
+	}
 	while ((dp=readdir(dir)) != NULL)
 	{
 		if( !((strcmp(dp->d_name,".")==0) || (strcmp(dp->d_name,"..")==0)) )

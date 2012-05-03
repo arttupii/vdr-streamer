@@ -28,7 +28,7 @@ CVideoConverter::CVideoConverter() {
 	// TODO Auto-generated constructor stub
 	id_counter=0;
 	int max_count_video_tasks = 2;
-	vdr_video_folder = "/home/video";
+	vdr_video_folder = "/home/video2";
 	video_output_folder = "www/video";
 	ConfigFile::instance()->get_value("vdr_video_folder", vdr_video_folder);
 	ConfigFile::instance()->get_value("max_count_video_tasks", max_count_video_tasks);
