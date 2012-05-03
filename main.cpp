@@ -21,41 +21,12 @@ using namespace std;
 #include "configfile/configfile.h"
 #include "CHttpRequestHandler.h"
 
-#include <pthread.h>
-
 #include "CVdrLinks.h"
 #include "CVideoConverter.h"
 
-pid_t start_sub_process(string cmd)
-{
-	pid_t pID = fork();
-	if (pID == 0)                // child
-	{
-		system(cmd.c_str());
-		exit(0);
-	}
-	else if (pID < 0)            // failed to fork
-	{
-		cerr << "Failed to fork" << endl;
-
-	}
-	
-      // Code only executed by parent process
-	return pID;
-}
-                
+#include <list>
+#include <sys/wait.h>
 #define CONFIG_FILE "vdr-streamer.conf"
-
-void *serverClient(void *socket)
-{
-	long c = (long)socket;
-	printf("Client connected %d", (int)c);
-	CHttpRequestHandler rec(c);
-	rec.handle();
-	//sleep(1);
-	close_socket(c);
-	pthread_exit(NULL);
-}
 
 void termination_handler (int signum)
 {
@@ -91,8 +62,6 @@ int main()
 	  if (old_action.sa_handler != SIG_IGN)
 	    sigaction (SIGTERM, &new_action, NULL);
 
-	//openlog("TESTI", LOG_NOWAIT, LOG_USER);
-
 
 
 	CVdrLinks::instance()->update();
@@ -104,12 +73,36 @@ int main()
 	int port=50000;
 	ConfigFile::instance()->get_value("server port", port);
 	int s = create_server(sin_addr, port);
-	//syslog(0,"Server created successfully %d", s);
 	int c;
+	list<pid_t> children;
 	while((c=wait_connection(s))>0)
 	{
-		pthread_t thread;
-		pthread_create(&thread, NULL, serverClient, (void *)c);
+		pid_t pid = fork();
+		if(pid==0)
+		{
+			close_socket(s);
+			printf("Client connected %d", (int)c);
+			CHttpRequestHandler rec(c);
+			rec.handle();
+			close_socket(c);
+			exit(0);
+		}
+		close_socket(c);
+
+		if(pid>0)
+		{
+			children.push_back(pid);
+		}
+		list<pid_t>::iterator it = children.begin();
+		for(;it!=children.end();it++)
+		{
+			int status;
+			pid_t rep = waitpid((*it), &status, WNOHANG);
+			if(rep!=0)
+			{
+				it=children.erase(it);
+			}
+		}
 	}
 	close_socket(s);
 }
