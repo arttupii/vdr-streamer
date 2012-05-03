@@ -190,7 +190,6 @@ bool CHttpRequestHandler::handleStreamFile(string file)
 		//string channel = file.substr(1,index-1);
 		
 
-
 		printf("VDR Stream: link %s\n", link.c_str());
 		if(link.empty()) return false;
 
