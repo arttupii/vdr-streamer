@@ -12,7 +12,7 @@
 #include<vector>
 #include<sstream>
 #include<list>
-
+#include<map>
 #include"CMutex.h"
 using namespace std;
 class CVideoConverter;
@@ -24,13 +24,16 @@ typedef struct{
 	string info;
 	string description;
 	string folder;
-	string id;
-	string status;
-	bool taskRunning;
-	pthread_t thread;
-	string pid_file;
 
-	string target_file;
+
+	string task_id;
+	bool task_isRunning;
+	string task_status;
+	string task_pid;
+	pid_t task_pid_child;
+	string task_source_folder;
+	string task_target_folder;
+	string task_target_file_name;
 } TaskInfo;
 
 
@@ -40,15 +43,24 @@ private:
 	CVideoConverter();
 public:
 	virtual ~CVideoConverter();
-	static CVideoConverter *instance();
 
-	string getStatus();
+	static string startVideoConverting(string id);
+	static string stopVideoConverting(string id);
 
-	string startVideoConverting(string id);
-	string stopVideoConverting(string id);
+	static void startTask();
+
+	static void updateVideos();
+	static void checkTaskStatus();
+private:
+	map<int, string> split(string text, char c);
+	void runTask();
+	void write_status_to_disk();
+
 	void setVideoConvertingStatus(string id, string status);
 	string getVideoConvertingStatus(string id);
-private:
+
+	static int writeToPosixQueue(string text);
+
 	void updateVideoInfoFromVdrDir();
 
 	list<TaskInfo>::iterator findTaskInfo(string id);

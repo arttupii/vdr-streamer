@@ -129,20 +129,20 @@ string CHttpRequestHandler::getVirtualFile(string file)
 			i++;
                 }
 	}
-	if(file=="/videolist.txt")
+	/*if(file=="/videolist.txt")
 	{
 		return CVideoConverter::instance()->getStatus();
-	}
+	}*/
 
 	if(file=="/convert.run")
 	{
 		if(!params["convert"].empty())
 		{
-			data<<CVideoConverter::instance()->startVideoConverting(params["convert"]);
+			data<<CVideoConverter::startVideoConverting(params["convert"]);
 		}
 		else if(!params["stop"].empty())
 		{
-			data<<CVideoConverter::instance()->stopVideoConverting(params["stop"]);
+			data<<CVideoConverter::stopVideoConverting(params["stop"]);
 		}
 		else
 		{

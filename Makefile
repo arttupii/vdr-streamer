@@ -1,6 +1,6 @@
 CXX=g++
-CXXFLAGS=-g -pthread -std=c++0x 
-LIBS=-lm
+CXXFLAGS=-lrt -g -std=c++0x 
+LIBS=-lm 
 
 OBS= main.o \
      CSocket.o \

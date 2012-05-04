@@ -13,16 +13,25 @@
 #include <semaphore.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <mqueue.h>
 
-
+#define POSIX_QUEUE "/Video_converter_queue"
+#define PID_FILE "CONVERT_PID.txt"
 sem_t task_sem;
 
 void *runUpdateVdrFilesTask(void *vc)
 {
+	int i=0;
 	while(1)
 	{
-		((CVideoConverter*)vc)->updateVideoInfoFromVdrDir();
-		sleep(60);
+		if(i>=(60/5))
+		{
+			CVideoConverter::updateVideos();
+			i=0;
+		}
+		CVideoConverter::checkTaskStatus();
+		sleep(5);
+		i++;
 	}
 	pthread_exit(NULL);
 }
@@ -37,9 +46,9 @@ CVideoConverter::CVideoConverter() {
 	ConfigFile::instance()->get_value("max_count_video_tasks", max_count_video_tasks);
 	ConfigFile::instance()->get_value("video_output_folder", video_output_folder);
 
-	updateVideoInfoFromVdrDir();
+	//updateVideoInfoFromVdrDir();
 	pthread_t thread;
-	int rc = pthread_create(&thread, NULL, runUpdateVdrFilesTask, (void *)this);
+	int rc = pthread_create(&thread, NULL, runUpdateVdrFilesTask, NULL);
 	if (rc)
 	{
 		printf("ERROR; return code from pthread_create() is %d\n", rc);
@@ -52,14 +61,26 @@ CVideoConverter::~CVideoConverter() {
 	// TODO Auto-generated destructor stub
 }
 
-CVideoConverter *CVideoConverter::instance()
+void CVideoConverter::startTask()
 {
-	static CVideoConverter *p = 0;
-	if(p==0)
+	printf("CVideoConverter:: Try to start CVideoConverter task\n");
+
 	{
-		p = new CVideoConverter();
+
+	pid_t pid = fork();
+	if(pid==0)
+	{
+		printf("CVideoConverter:: Creating CVideoConverter\n");
+		CVideoConverter cv;
+		cv.runTask();
+		exit(1);
 	}
-	return p;
+	if(pid<0)
+	{
+		printf("CVideoConverter::Cannot create fork\n");
+		exit(1);
+	}
+	}
 }
 
 typedef struct{
@@ -72,8 +93,164 @@ typedef struct{
 } TaskParams;
 
 
-void *runTask(void *_params)
+void CVideoConverter::runTask()
 {
+	struct mq_attr attr, old_attr;   // To store queue attributes
+	mqd_t mqdes;             // Message queue descriptors
+	unsigned int prio;               // Priority
+
+	attr.mq_maxmsg = 5;
+	attr.mq_msgsize = 300;
+	attr.mq_flags = 0;
+
+	//mq_unlink (POSIX_QUEUE);
+
+	// Open a queue with the attribute structure
+	printf("CVideoConverter::open posix queue\n");
+	mqdes = mq_open (POSIX_QUEUE, O_RDWR|O_CREAT, 0664, &attr);
+	if(mqdes>0)
+	{
+		printf("CVideoConverter::posix queue is open\n");
+		mq_setattr (mqdes, &attr, &old_attr);
+		// Now eat all of the messages
+		char buffer[300];
+		unsigned int prio;
+
+		updateVideoInfoFromVdrDir();
+		write_status_to_disk();
+
+		printf("CVideoConverter::Goto while loop\n");
+		ssize_t size;
+		while( (size=mq_receive (mqdes, buffer, sizeof(buffer), &prio)) != -1)
+		{
+			bool update = false;
+			map<int, string> params = split(string(buffer,size), ';');
+			string msg = params[0];
+			string id = params[1];
+
+			printf("CVideoConverter:: Received posix msg %s\n", buffer);
+
+			if("CHECK_TASK_STATUS")
+			{
+			}
+
+			if("UPDATE_VIDEOS")
+			{
+				updateVideoInfoFromVdrDir();
+				update = true;
+			}
+
+			if(msg=="START")
+			{
+				update = true;
+				printf("START\n");
+				list<TaskInfo>::iterator it = findTaskInfo(id);
+				if(it!=tasks.end())
+				{
+					if((*it).task_status!="ONGOING" && (*it).task_status!="WAITING" )
+					{
+						pid_t pid = fork();
+						if(pid==0)
+						{
+							stringstream cmd;
+							cmd<<"rm -f "<<PID_FILE;
+							system(cmd.str().c_str());
+							cmd.str("");
+							cmd<<"/bin/sh convert_script.sh \""<<(*it).task_source_folder<<"\" \""<<(*it).task_target_folder<<"\" \""<<(*it).task_target_file_name<<"\" "<<PID_FILE;
+							printf("task cmd: %s \n", cmd.str().c_str());
+							system(cmd.str().c_str());
+							exit(0);
+						}
+						if(pid>0)
+						{
+							(*it).task_pid_child = pid;
+							for(int i=0;i<5;i++)
+							{
+								string line;
+								ifstream pidfile (PID_FILE);
+								if (pidfile.is_open())
+								{
+									if( pidfile.good() )
+									{
+									  getline (pidfile,line);
+									  (*it).task_pid==line;
+									  printf("New task started, id=%s, pid=%s\n", id.c_str(), line.c_str());
+									  (*it).task_status="ONGOING";
+									  break;
+									}
+									pidfile.close();
+								}
+								else
+								{
+									printf("Cannot open pid file %s yet --> waiting\n", PID_FILE);
+									sleep(1);
+								}
+							}
+						}
+					}
+					else
+					{
+						printf("CVideoConverter::Task is already ongoing\n");
+					}
+				}
+				else
+				{
+					printf("CVideoConverter::Invalid task id %s\n", id.c_str());
+				}
+			}
+
+			if(msg=="STOP")
+			{
+				update = true;
+				list<TaskInfo>::iterator it = findTaskInfo(id);
+				if(it!=tasks.end())
+				{
+					//write_status_to_disk();
+					if((*it).task_status=="ONGOING")
+					{
+						int status;
+						printf("CVideoConverter::Killing task\n");
+						system((string("kill ") + (*it).task_pid).c_str());
+						kill((*it).task_pid_child, SIGTERM);
+						waitpid((*it).task_pid_child, &status, 0);
+						printf("CVideoConverter::Task is killed\n");
+						(*it).task_status="STOPPED";
+					}
+					if((*it).task_status=="WAITING")
+					{
+						(*it).task_status="STOPPED";
+					}
+				}
+			}
+
+			//task_pid_child
+
+			//Looping tasks if them are ready
+			list<TaskInfo>::iterator it=tasks.begin();
+			for(;it!=tasks.end();it++)
+			{
+				if((*it).task_status=="ONGOING")
+				{
+					int status;
+					pid_t p = waitpid((*it).task_pid_child, &status, WNOHANG);
+					if(p>0)
+					{
+						update = true;
+						(*it).task_status="DONE";
+					}
+				}
+			}
+			if(update)
+			{
+				write_status_to_disk();
+			}
+		}
+	}
+	else
+	{
+		printf("CVideoConverter::Cannot open posix queue\n");
+	}
+	/*
 	TaskParams *params = (TaskParams*)_params;
 
 	sem_wait(&task_sem);
@@ -139,76 +316,45 @@ void *runTask(void *_params)
 	sem_post(&task_sem);
 
 	pthread_exit(NULL);
+	*/
 }
 string CVideoConverter::stopVideoConverting(string id)
 {
-	CQuard quard(mutex);
-	list<TaskInfo>::iterator it=findTaskInfo(id);
-	if(it!=tasks.end())
-	{
-		if( ((*it).status=="ONGOING" || (*it).status=="WAITING") && (*it).status!="STOPPING" )
-		{
-			(*it).status="STOPPING";
-			return "ok";
-		}
-	}
-
-	return "error";
+	if(writeToPosixQueue(string("STOP;")+id)==0)
+		return "ok";
+	else
+		return "error";
+}
+void CVideoConverter::updateVideos()
+{
+	writeToPosixQueue("UPDATE_VIDEOS");
+}
+void CVideoConverter::checkTaskStatus()
+{
+	CVideoConverter::writeToPosixQueue("CHECK_TASK_STATUS");
 }
 string CVideoConverter::startVideoConverting(string id)
 {
-	CQuard quard(mutex);
-	list<TaskInfo>::iterator it=findTaskInfo(id);
-	if(it!=tasks.end())
-	{
-		if((*it).status=="ONGOING" || (*it).status=="WAITING" || (*it).status=="STOPPING")
-		{
-			return "already ongoing";
-		}
-		printf("Converting started... %s\n", it->folder.c_str());
-		TaskParams *params = new TaskParams;
-		(*it).status="WAITING";
-		(*it).pid_file = string("pid_convert_")+id;
-		params->source=vdr_video_folder + "/" + (*it).folder;
-		params->id=id;
-		params->vc=this;
-		params->pid_file=(*it).pid_file;
-		params->target_folder=video_output_folder;
-		params->target_file=id + string("_") + (*it).name;
-
-		(*it).target_file = params->target_folder +string("/") + params->target_file;
-		pthread_t thread;
-		int rc = pthread_create(&thread, NULL, runTask, (void *)params);
-		(*it).thread = thread;
-		if (rc)
-		{
-			printf("ERROR; return code from pthread_create() is %d\n", rc);
-		}
+	if(writeToPosixQueue(string("START;")+id)==0)
 		return "ok";
-	}
 	else
-	{
-		printf("Unkown id %s... Cannot start converting\n", id.c_str());
-	}
-	return "invalid id";
+		return "error";
 }
 
 void CVideoConverter::setVideoConvertingStatus(string id, string status)
 {
-	CQuard quard(mutex);
 	list<TaskInfo>::iterator it=findTaskInfo(id);
 	if(it!=tasks.end())
 	{
-		(*it).status=status;
+		(*it).task_status=status;
 	}
 }
 string CVideoConverter::getVideoConvertingStatus(string id)
 {
-	CQuard quard(mutex);
 	list<TaskInfo>::iterator it=findTaskInfo(id);
 	if(it!=tasks.end())
 	{
-		return (*it).status;
+		return (*it).task_status;
 	}
 	return "";
 }
@@ -218,7 +364,7 @@ list<TaskInfo>::iterator CVideoConverter::findTaskInfo(string id)
 
 	for(;it!=tasks.end();it++)
 	{
-		if((*it).id==id)
+		if((*it).task_id==id)
 		{
 			return it;
 		}
@@ -228,6 +374,7 @@ list<TaskInfo>::iterator CVideoConverter::findTaskInfo(string id)
 
 void CVideoConverter::updateVideoInfoFromVdrDir()
 {
+	printf("CVideoConverter::updateVideoInfoFromVdrDir()\n");
 	vector<string> filelist;
 	CCommon::get_file_list(filelist, vdr_video_folder.c_str());
 
@@ -243,8 +390,6 @@ void CVideoConverter::updateVideoInfoFromVdrDir()
 			vector<string> videoInfo = getInfo(vdr_video_folder + file);
 			if(!videoInfo.empty())
 			{
-				CQuard quard(mutex);
-
 				string channel = videoInfo[0];
 				string info = videoInfo[1];
 				string name = videoInfo[2];
@@ -269,13 +414,20 @@ void CVideoConverter::updateVideoInfoFromVdrDir()
 					t.info=info;
 					t.description=description;
 					t.folder=folder;
-					t.status=status;
-					t.taskRunning=false;
 
 					stringstream id;
 					id<<id_counter;
 					id_counter++;
-					t.id=id.str();
+
+					t.task_id=id.str();
+					t.task_status=status;
+					t.task_isRunning=false;
+					t.task_source_folder = vdr_video_folder + string("/") + folder;
+					t.task_target_folder = video_output_folder;
+					t.task_target_file_name = t.task_id + "_" + t.name;
+					t.task_pid="";
+					t.task_pid_child=-1;
+
 					tasks.push_back(t);
 				}
 			}
@@ -283,19 +435,27 @@ void CVideoConverter::updateVideoInfoFromVdrDir()
 	}
 }
 
-string CVideoConverter::getStatus()
+void CVideoConverter::write_status_to_disk()
 {
-	CQuard quard(mutex);
 	stringstream data;
 	list<TaskInfo>::iterator it=tasks.begin();
 	for(;it!=tasks.end();it++)
 	{
 		TaskInfo ti = *it;
 
-		data<<ti.channel<<";"<<ti.info<<";"<<ti.name<<";"<<ti.description<<";"<<ti.id<<";"<<ti.status<<"\n";
+		data<<ti.channel<<";"<<ti.info<<";"<<ti.name<<";"<<ti.description<<";"<<ti.task_id<<";"<<ti.task_status<<"\n";
 	}
 
-	return data.str();
+	data.str();
+
+	FILE * pFile;
+	pFile = fopen ("./www/videolist.txt","w");
+	if (pFile!=NULL)
+	{
+	    fputs (data.str().c_str(),pFile);
+	    fclose (pFile);
+	}
+	return;
 }
 
 vector<string> CVideoConverter::getInfo(string file)
@@ -366,4 +526,57 @@ string CVideoConverter::converInfoString(string x)
 	return x;
 }
 
+int CVideoConverter::writeToPosixQueue(string text)
+{
+	printf("Write to posix queue %s\n", text.c_str());
+	  struct mq_attr attr, old_attr;   // To store queue attributes
+	  mqd_t mqdes;             // Message queue descriptors
+	  unsigned int prio=0;               // Priority
 
+	  attr.mq_maxmsg = 5;
+	  attr.mq_msgsize = 300;
+	  attr.mq_flags = 0;
+
+	  // Open a queue with the attribute structure
+	  mqdes = mq_open (POSIX_QUEUE, O_RDWR|O_CREAT, 0664, &attr);
+	  if(mqdes>0)
+	  {
+		 // mq_setattr  (mqdes, &attr, &old_attr);'
+		  if (mq_send (mqdes, text.c_str(), text.length(), prio) == -1)
+		  {
+			  perror ("mq_send()");
+			  return -1;
+		  }
+		  //printf("Send posix msg %s\n", text.c_str());
+		  // Close all open message queue descriptors
+		  mq_close (mqdes);
+		  return 0;
+	  }
+	  else
+	  {
+		  printf("Cannot open posix queue %s\n", text.c_str());
+	  }
+	  return -1;
+}
+
+map<int, string> CVideoConverter::split(string text, char c)
+{
+	map<int, string> ret;
+	int x=0;
+	while(!text.empty())
+	{
+		ssize_t i = text.find(c);
+		if(i==string::npos)
+		{
+			i = text.length();
+			ret[x] = text.substr(0,i);
+			break;
+		}
+
+		ret[x] = text.substr(0,i);
+		text = text.substr(i+1);
+		x++;
+
+	}
+	return ret;
+}

@@ -34,6 +34,7 @@ void termination_handler (int signum)
 	exit(0);
 }
 
+
 int main()
 {
 	if(!ConfigFile::instance()->open_configFile(CONFIG_FILE))
@@ -42,8 +43,8 @@ int main()
 		printf("Cannot open config file, %s", CONFIG_FILE);
 	}
 
-	CVideoConverter::instance();
-	CVdrLinks::instance();
+	printf("vdr-streamer starter\n");
+	CVideoConverter::startTask();
 
 	struct sigaction new_action, old_action;
 
