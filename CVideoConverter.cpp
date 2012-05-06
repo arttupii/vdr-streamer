@@ -230,6 +230,9 @@ void CVideoConverter::runTask()
 						waitpid((*it).task_pid_child, &status, 0);
 						printf("CVideoConverter::Task is killed\n");
 						(*it).task_status="STOPPED";
+						stringstream cmd;
+						cmd<<"rm -f \""<<(*it).task_target_folder<<"/"<<(*it).task_target_file_name<<"\"* ";
+						system(cmd.str().c_str());
 					}
 					if((*it).task_status=="WAITING")
 					{
@@ -254,6 +257,7 @@ void CVideoConverter::runTask()
 						update = true;
 						(*it).task_status="DONE";
 					}
+					
 				}
 			}
 
