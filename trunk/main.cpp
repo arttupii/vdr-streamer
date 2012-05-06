@@ -35,8 +35,10 @@ void termination_handler (int signum)
 }
 
 
+
 int main()
 {
+
 	if(!ConfigFile::instance()->open_configFile(CONFIG_FILE))
 	{
 		//syslog(0,"Cannot open config file, %s", CONFIG_FILE);
