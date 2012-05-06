@@ -63,6 +63,8 @@ private:
 
 	void updateVideoInfoFromVdrDir();
 
+	int getOngoingTaskCount();
+	void startNewTask(string id);
 	list<TaskInfo>::iterator findTaskInfo(string id);
 
 	vector<string> getInfo(string file);
@@ -71,11 +73,15 @@ private:
 	string video_output_folder;
 
 	int id_counter;
+	int max_count_video_tasks;
 
 	list<TaskInfo> tasks;
 	friend class Task;
 	friend void *runUpdateVdrFilesTask(void*);
 	CMutex mutex;
+
+	list<string> waiting_list;
+
 };
 
 #endif /* CVIDEOCONVERTER_H_ */
