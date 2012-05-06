@@ -18,7 +18,7 @@
 #include "configfile/configfile.h"
 #include "CCommon.h"
 #include "CVideoConverter.h"
-
+#include <sys/wait.h>
 //pid_t popen2(const char *command, int *infp, int *outfp);
 
 CHttpRequestHandler::CHttpRequestHandler(int socket) {
@@ -274,6 +274,134 @@ bool CHttpRequestHandler::handleStreamFile(string file)
 	}
 	return false;
 }
+
+#define READ 0
+#define WRITE 1
+string CHttpRequestHandler::paramsLine()
+{
+	string w="";
+	map<string, string>::iterator it = params.begin();
+	for(;it!=params.end();it++)
+	{
+		if(it!=params.begin();
+		w+="&";
+		w+=(it)->first + string("=")+(it)->second;
+	},
+	return w
+}
+pid_t popen2(const char *command, int *infp, int *outfp)
+{
+	int p_stdin[2], p_stdout[2];
+    	pid_t pid;
+
+    	if (pipe(p_stdin) != 0 || pipe(p_stdout) != 0)
+        	return -1;
+
+    	pid = fork();
+
+    	if (pid < 0)
+        	return pid;
+
+    	else if (pid == 0)
+   	 {
+		close(p_stdin[WRITE]);
+		dup2(p_stdin[READ], READ);
+		close(p_stdout[READ]);
+		dup2(p_stdout[WRITE], WRITE);
+
+		if(execl("/bin/sh", "sh", "-c", command, NULL)!=0)
+		perror("execl");
+		exit(1);
+    	}
+
+	if (infp == NULL)
+		close(p_stdin[WRITE]);
+	else
+		*infp = p_stdin[WRITE];
+
+	if (outfp == NULL)
+		close(p_stdout[READ]);
+	else
+		*outfp = p_stdout[READ];
+
+	return pid;
+}
+string CHttpRequestHandler::handleCgiFile(string file)
+{
+	string out="";
+	int infp, outfp;
+
+	file=string("./www/")+file;
+	//FILE *pipef = popen(file.c_str(), "r");
+	
+	stringstream reply;
+	pid_t pid;
+	if((pid=popen2(file.c_str(),&infp, &outfp)))
+	{
+		printf("handleCgiFile() file %s\n", file.c_str());
+		char buffer[1024*16];
+
+		ssize_t r;
+		fcntl(outfp, F_SETFL, O_NONBLOCK);
+		int status;
+
+		string w=paramsLine()+"\n";
+		write(infp, w.c_str(), w.length());
+
+		while(true)
+		{
+			ssize_t r = read(outfp, buffer, sizeof(buffer));
+			if (r > 0)
+			{
+				out+=string(buffer,r);
+			}
+			if(waitpid(pid, &status, WNOHANG)!=0)
+			{
+				r = read(outfp, buffer, sizeof(buffer));
+				if(r>0) out+=string(buffer,r);
+				break;
+			}
+			usleep(10000);
+		}
+		close(infp);
+		close(outfp);
+
+		ssize_t di = out.find("\r\n\r\n");
+		string header;
+		string data;
+	
+		
+		if(di==string::npos || out.empty() || out.find("HTTP")==string::npos)
+		{
+			string data = string("ERROR!!! CANNOT FIND \"\\r\\n\\r\\n\" OR PERMISSION ERROR  \n");
+			
+			reply<<"HTTP/1.0 400 Bad Request\r\n";
+			reply<<"Content-Type: text/plain; charset=UTF-8\r\n";
+			reply<<"Content-Length: "<<data.length()+ out.length()<<"\r\n\r\n";
+			reply<<data<<"\n"<<out;
+		}
+		else
+		{
+			header=out.substr(0,di+2);
+			data=out.substr(di+4);
+
+			reply<<header;
+			reply<<"Server: Streamer\r\n";
+			reply<<"Content-Length: "<<data.length()<<"\r\n\r\n"; 
+			reply<<data;
+		}
+	}
+	else
+	{
+		printf("handleCgiFile() Cannot open %s, %s\n", file.c_str(), strerror(errno));
+		string data = strerror(errno);
+		reply<<"HTTP/1.0 200 Bad Request\r\n";
+		reply<<"Content-Type: text/plain; charset=UTF-8\r\n";
+		reply<<"Content-Length: "<<data.length()<<"\r\n\r\n";
+		reply<<data;
+	}
+	return reply.str();
+}
 void CHttpRequestHandler::sendFile(string file)
 {
 	file = urlDecoding(file);
@@ -283,56 +411,77 @@ void CHttpRequestHandler::sendFile(string file)
 	FILE * pFile=NULL;
 	unsigned int lSize=0;
 
-	if(virtualFile.empty())
+	if(file.find(".script")==string::npos)
 	{
-		if(file=="/") file = "/index.html";
-		if(allowed_files.find(file)!=allowed_files.end())
-		{
-			if(file=="/") file = "/index.html";
-			file = "./www/" + file;
-
-			pFile = fopen ( file.c_str() , "rb" );
-			if(pFile)
-			{
-				// obtain file size:
-				fseek (pFile , 0 , SEEK_END);
-				lSize = ftell (pFile);
-				rewind (pFile);
-			}
-		}
-		else
-		{
-			printf("Not allowed file %s\n", file.c_str());
-		}
-	}
-	stringstream header;
-	if(pFile|| (virtualFile.empty()==false) )
-	{
-		header<<"HTTP/1.1 200 OK\r\n";
-		header<<"Server: Streamer\r\n";
-
-		header<<"Content-Length: "<<(virtualFile.empty()? lSize : virtualFile.size())<<"\r\n";
-		header<<"Connection: close\r\n";
 		if(virtualFile.empty())
 		{
-			header<<"Content-Type: "<<getContenType(file)<<"\r\n";
+			if(file=="/") file = "/index.html";
+			if(allowed_files.find(file)!=allowed_files.end())
+			{
+				if(file=="/") file = "/index.html";
+				file = "./www/" + file;
+				pFile = fopen ( file.c_str() , "rb" );
+				if(pFile)
+				{
+					// obtain file size:
+					fseek (pFile , 0 , SEEK_END);
+					lSize = ftell (pFile);
+					rewind (pFile);
+				}
+			}
+			else
+			{
+				printf("Not allowed file %s\n", file.c_str());
+			}
+		}
+
+		stringstream header;
+		if(pFile|| (virtualFile.empty()==false) )
+		{
+			header<<"HTTP/1.1 200 OK\r\n";
+			header<<"Server: Streamer\r\n";
+
+			header<<"Content-Length: "<<(virtualFile.empty()? lSize : virtualFile.size())<<"\r\n";
+			header<<"Connection: close\r\n";
+			if(virtualFile.empty())
+			{
+				header<<"Content-Type: "<<getContenType(file)<<"\r\n";
+			}
+			else
+			{
+				header<<"Content-Type: "<<"text/plain; charset=UTF-8"<<"\r\n";
+			}
+			header<<"\r\n";
 		}
 		else
 		{
-			header<<"Content-Type: "<<"text/plain; charset=UTF-8"<<"\r\n";
+			header<<"HTTP/1.1 404 Not Found\r\n";
+			header<<"Server: Streamer\r\n";
+			header<<"Content-Length: 0\r\n";
+			header<<"Connection: close\r\n";
+			header<<"\r\n";
 		}
-		header<<"\r\n";
+		send_to_socket(socket, header.str().c_str(), header.str().length());
 	}
 	else
 	{
-		header<<"HTTP/1.1 404 Not Found\r\n";
-		header<<"Server: Streamer\r\n";
-		header<<"Content-Length: 0\r\n";
-		header<<"Connection: close\r\n";
-		header<<"\r\n";
+		
+		stringstream header;
+		if(allowed_files.find(file)!=allowed_files.end())
+		{
+			virtualFile=handleCgiFile(file);
+		}
+		else
+		{
+			header<<"HTTP/1.1 404 Not Found\r\n";
+			header<<"Server: Streamer\r\n";
+			header<<"Content-Length: 0\r\n";
+			header<<"Connection: close\r\n";
+			header<<"\r\n";
+		}
+		send_to_socket(socket, header.str().c_str(), header.str().length());
 	}
-	send_to_socket(socket, header.str().c_str(), header.str().length());
-
+	
 	if(!virtualFile.empty())
 	{
 		int i=0;
@@ -417,7 +566,6 @@ void CHttpRequestHandler::handleGetPost()
 			
 			params[name]=value;
 			printf("name: \"%s\", value:\"%s\"  %d\n", name.c_str(), value.c_str(), name.length());
-			printf("FFwname: \"%s\", value:\"%s\"  \n", name.c_str(), this->params["convert"].c_str());
 		}
 	}
 

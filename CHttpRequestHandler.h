@@ -29,13 +29,14 @@ private:
 	string getVirtualFile(string file);
 
 	bool getLine2(string &line, char &lastChar, char c);
-	int socket;
-
+	int socketLine();
+	string params
 	void clearParsetHeaderInfo();
 
 	void handleGetPost();
 	int send_from_socket_to_another(int from, int to);
 	bool startStreamScript(const char input[], int port, const char pid_file[]);
+	string handleCgiFile(string file);
 
 	void sendFile(string file);
 	string getContenType(string file);

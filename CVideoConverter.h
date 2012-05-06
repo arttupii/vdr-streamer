@@ -63,6 +63,8 @@ private:
 
 	void updateVideoInfoFromVdrDir();
 
+	
+
 	int getOngoingTaskCount();
 	void startNewTask(string id);
 	list<TaskInfo>::iterator findTaskInfo(string id);
