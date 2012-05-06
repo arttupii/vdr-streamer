@@ -39,7 +39,7 @@ void *runUpdateVdrFilesTask(void *vc)
 CVideoConverter::CVideoConverter() {
 	// TODO Auto-generated constructor stub
 	id_counter=0;
-	int max_count_video_tasks = 2;
+	max_count_video_tasks = 2;
 	vdr_video_folder = "/home/video2";
 	video_output_folder = "www/video";
 	ConfigFile::instance()->get_value("vdr_video_folder", vdr_video_folder);
@@ -92,7 +92,51 @@ typedef struct{
 	string pid_file;
 } TaskParams;
 
-
+void CVideoConverter::startNewTask(string id)
+{
+	list<TaskInfo>::iterator it = findTaskInfo(id);
+	if(it!=tasks.end())
+	{
+		pid_t pid = fork();
+		if(pid==0)
+		{
+			stringstream cmd;
+			cmd<<"rm -f "<<PID_FILE;
+			system(cmd.str().c_str());
+			cmd.str("");
+			cmd<<"/bin/sh convert_script.sh \""<<(*it).task_source_folder<<"\" \""<<(*it).task_target_folder<<"\" \""<<(*it).task_target_file_name<<"\" "<<PID_FILE;
+			printf("task cmd: %s \n", cmd.str().c_str());
+			system(cmd.str().c_str());
+			exit(0);
+		}
+		if(pid>0)
+		{
+			(*it).task_pid_child = pid;
+			for(int i=0;i<5;i++)
+			{
+				string line;
+				ifstream pidfile (PID_FILE);
+				if (pidfile.is_open())
+				{
+					if( pidfile.good() )
+					{
+					  getline (pidfile,line);
+					  (*it).task_pid==line;
+					  printf("New task started, id=%s, pid=%s\n", id.c_str(), line.c_str());
+					  (*it).task_status="ONGOING";
+					  break;
+					}
+					pidfile.close();
+				}
+				else
+				{
+					printf("Cannot open pid file %s yet --> waiting\n", PID_FILE);
+					sleep(1);
+				}
+			}
+		}
+	}
+}
 void CVideoConverter::runTask()
 {
 	struct mq_attr attr, old_attr;   // To store queue attributes
@@ -149,43 +193,14 @@ void CVideoConverter::runTask()
 				{
 					if((*it).task_status!="ONGOING" && (*it).task_status!="WAITING" )
 					{
-						pid_t pid = fork();
-						if(pid==0)
+						if(getOngoingTaskCount()>=max_count_video_tasks)
 						{
-							stringstream cmd;
-							cmd<<"rm -f "<<PID_FILE;
-							system(cmd.str().c_str());
-							cmd.str("");
-							cmd<<"/bin/sh convert_script.sh \""<<(*it).task_source_folder<<"\" \""<<(*it).task_target_folder<<"\" \""<<(*it).task_target_file_name<<"\" "<<PID_FILE;
-							printf("task cmd: %s \n", cmd.str().c_str());
-							system(cmd.str().c_str());
-							exit(0);
+							(*it).task_status="WAITING";
+							waiting_list.push_back(id);
 						}
-						if(pid>0)
+						else
 						{
-							(*it).task_pid_child = pid;
-							for(int i=0;i<5;i++)
-							{
-								string line;
-								ifstream pidfile (PID_FILE);
-								if (pidfile.is_open())
-								{
-									if( pidfile.good() )
-									{
-									  getline (pidfile,line);
-									  (*it).task_pid==line;
-									  printf("New task started, id=%s, pid=%s\n", id.c_str(), line.c_str());
-									  (*it).task_status="ONGOING";
-									  break;
-									}
-									pidfile.close();
-								}
-								else
-								{
-									printf("Cannot open pid file %s yet --> waiting\n", PID_FILE);
-									sleep(1);
-								}
-							}
+							startNewTask(id);
 						}
 					}
 					else
@@ -219,6 +234,7 @@ void CVideoConverter::runTask()
 					if((*it).task_status=="WAITING")
 					{
 						(*it).task_status="STOPPED";
+						waiting_list.remove(id);
 					}
 				}
 			}
@@ -240,6 +256,21 @@ void CVideoConverter::runTask()
 					}
 				}
 			}
+
+
+			while(getOngoingTaskCount()<max_count_video_tasks)
+			{
+				if(waiting_list.empty()==false)
+				{
+					startNewTask(waiting_list.front());
+					waiting_list.pop_front();
+				}
+				else
+				{
+					break;
+				}
+			}
+
 			if(update)
 			{
 				write_status_to_disk();
@@ -250,73 +281,6 @@ void CVideoConverter::runTask()
 	{
 		printf("CVideoConverter::Cannot open posix queue\n");
 	}
-	/*
-	TaskParams *params = (TaskParams*)_params;
-
-	sem_wait(&task_sem);
-
-	if(params->vc->getVideoConvertingStatus(params->id)!="STOPPING" && params->vc->getVideoConvertingStatus(params->id)=="WAITING")
-	{
-		pid_t pid = fork();
-
-		if(pid==0)
-		{
-			stringstream cmd;
-			cmd<<"/bin/sh convert_script.sh \""<<params->source<<"\" \""<<params->target_folder<<"\" \""<<params->target_file<<"\" "<<params->pid_file;
-			system(cmd.str().c_str());
-			exit(1);
-		}
-
-		if(pid>0)
-		{
-			while(true)
-			{
-				if(params->vc->getVideoConvertingStatus(params->id)=="STOPPING")
-				{
-					stringstream cmd;
-					cmd<<"kill `cat "<<params->pid_file<<"` ; rm -f "<<params->pid_file;
-					system(cmd.str().c_str());
-					cmd.str("");
-					cmd<<"rm -f \""<<params->target_folder<<"/"<<params->target_file<<"\"*";
-					system(cmd.str().c_str());
-					params->vc->setVideoConvertingStatus(params->id, "STOPPED");
-					break;
-				}
-
-				if(params->vc->getVideoConvertingStatus(params->id)=="WAITING")
-				{
-					params->vc->setVideoConvertingStatus(params->id, "ONGOING");
-				}
-
-				int status;
-				pid_t rep = waitpid(pid, &status, WNOHANG);
-
-				if(rep<0)
-				{
-					printf("Error occured during task\n");
-					break;
-				}
-				if(rep>0)
-				{
-					params->vc->setVideoConvertingStatus(params->id, "DONE");
-					break;
-				}
-				sleep(5);
-			}
-		}
-		else
-		{
-			params->vc->setVideoConvertingStatus(params->id, "ERROR");
-		}
-	}
-	else
-	{
-		params->vc->setVideoConvertingStatus(params->id, "STOPPED");
-	}
-	sem_post(&task_sem);
-
-	pthread_exit(NULL);
-	*/
 }
 string CVideoConverter::stopVideoConverting(string id)
 {
@@ -372,6 +336,20 @@ list<TaskInfo>::iterator CVideoConverter::findTaskInfo(string id)
 	return tasks.end();
 }
 
+int CVideoConverter::getOngoingTaskCount()
+{
+	int ret=0;
+	list<TaskInfo>::iterator it=tasks.begin();
+
+	for(;it!=tasks.end();it++)
+	{
+		if((*it).task_status=="ONGOING")
+		{
+			ret++;
+		}
+	}
+	return ret;
+}
 void CVideoConverter::updateVideoInfoFromVdrDir()
 {
 	printf("CVideoConverter::updateVideoInfoFromVdrDir()\n");
