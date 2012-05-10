@@ -283,11 +283,10 @@ string CHttpRequestHandler::paramsLine()
 	map<string, string>::iterator it = params.begin();
 	for(;it!=params.end();it++)
 	{
-		if(it!=params.begin();
-		w+="&";
+		if(it!=params.begin()) w+="&";
 		w+=(it)->first + string("=")+(it)->second;
-	},
-	return w
+	}
+	return w;
 }
 pid_t popen2(const char *command, int *infp, int *outfp)
 {
@@ -565,7 +564,7 @@ void CHttpRequestHandler::handleGetPost()
 				sparams=sparams.substr(i1+1);
 			
 			params[name]=value;
-			printf("name: \"%s\", value:\"%s\"  %d\n", name.c_str(), value.c_str(), name.length());
+			//printf("name: \"%s\", value:\"%s\"  %d\n", name.c_str(), value.c_str(), name.length());
 		}
 	}
 

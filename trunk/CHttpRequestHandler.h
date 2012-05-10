@@ -27,10 +27,9 @@ private:
 	string urlDecoding(string url);
 
 	string getVirtualFile(string file);
-
+	string paramsLine();
 	bool getLine2(string &line, char &lastChar, char c);
 	int socketLine();
-	string params
 	void clearParsetHeaderInfo();
 
 	void handleGetPost();
@@ -54,6 +53,7 @@ private:
 	string host;
 
 	string video_type;
+	int socket;
 };
 
 
