@@ -34,11 +34,10 @@ void termination_handler (int signum)
 	exit(0);
 }
 
-
+#include"CCommon.h"
 
 int main()
 {
-
 	if(!ConfigFile::instance()->open_configFile(CONFIG_FILE))
 	{
 		//syslog(0,"Cannot open config file, %s", CONFIG_FILE);
@@ -78,6 +77,7 @@ int main()
 	int s = create_server(sin_addr, port);
 	int c;
 	list<pid_t> children;
+	printf("in_addr --> %s     %d\n", sin_addr.c_str(), port);
 	while((c=wait_connection(s))>0)
 	{
 		pid_t pid = fork();
