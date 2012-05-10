@@ -1,6 +1,6 @@
 CXX=g++
-CXXFLAGS= -lrt -g -std=c++0x 
-LIBS=-lm -lrt
+CXXFLAGS=-g -std=c++0x 
+LIBS= -lrt 
 
 OBS= main.o \
      CSocket.o \
@@ -12,7 +12,7 @@ OBS= main.o \
      CMutex.o 
 
 streamer: $(OBS) 
-	$(CXX) $(CXXFLAGS) $(LIBS) $^ -o $@
+	$(CXX)  $^ $(LIBS) -o $@
 	
 .cpp.o:
 	$(CXX) $(CXXFLAGS) -c $< -o $@

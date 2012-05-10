@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <mqueue.h>
+#include <stdlib.h>
 
 #define POSIX_QUEUE "/Video_converter_queue"
 #define PID_FILE "CONVERT_PID.txt"

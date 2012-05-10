@@ -9,6 +9,7 @@
 #include <dirent.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 CCommon::CCommon() {
 	// TODO Auto-generated constructor stub
