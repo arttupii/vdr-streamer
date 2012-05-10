@@ -1,6 +1,6 @@
 CXX=g++
-CXXFLAGS=-lrt -g -std=c++0x 
-LIBS=-lm 
+CXXFLAGS= -lrt -g -std=c++0x 
+LIBS=-lm -lrt
 
 OBS= main.o \
      CSocket.o \
