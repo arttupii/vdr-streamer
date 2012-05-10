@@ -275,8 +275,7 @@ bool CHttpRequestHandler::handleStreamFile(string file)
 	return false;
 }
 
-#define READ 0
-#define WRITE 1
+
 string CHttpRequestHandler::paramsLine()
 {
 	string w="";
@@ -288,43 +287,7 @@ string CHttpRequestHandler::paramsLine()
 	}
 	return w;
 }
-pid_t popen2(const char *command, int *infp, int *outfp)
-{
-	int p_stdin[2], p_stdout[2];
-    	pid_t pid;
 
-    	if (pipe(p_stdin) != 0 || pipe(p_stdout) != 0)
-        	return -1;
-
-    	pid = fork();
-
-    	if (pid < 0)
-        	return pid;
-
-    	else if (pid == 0)
-   	 {
-		close(p_stdin[WRITE]);
-		dup2(p_stdin[READ], READ);
-		close(p_stdout[READ]);
-		dup2(p_stdout[WRITE], WRITE);
-
-		if(execl("/bin/sh", "sh", "-c", command, NULL)!=0)
-		perror("execl");
-		exit(1);
-    	}
-
-	if (infp == NULL)
-		close(p_stdin[WRITE]);
-	else
-		*infp = p_stdin[WRITE];
-
-	if (outfp == NULL)
-		close(p_stdout[READ]);
-	else
-		*outfp = p_stdout[READ];
-
-	return pid;
-}
 string CHttpRequestHandler::handleCgiFile(string file)
 {
 	string out="";
@@ -335,7 +298,7 @@ string CHttpRequestHandler::handleCgiFile(string file)
 	
 	stringstream reply;
 	pid_t pid;
-	if((pid=popen2(file.c_str(),&infp, &outfp)))
+	if((pid=CCommon::popen2(file.c_str(),&infp, &outfp)))
 	{
 		printf("handleCgiFile() file %s\n", file.c_str());
 		char buffer[1024*16];

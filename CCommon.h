@@ -15,7 +15,7 @@ class CCommon {
 public:
 	CCommon();
 	virtual ~CCommon();
-
+	static pid_t popen2(const char *command, int *infp, int *outfp);
 	static void get_file_list(vector<string> &fileList, const char *dir_path, int DoNotUse_subsrt=0);
 };
 
