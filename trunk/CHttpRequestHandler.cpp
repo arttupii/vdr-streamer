@@ -31,8 +31,8 @@ CHttpRequestHandler::CHttpRequestHandler(int socket) {
 	content_type_map[".jpg"]="image/jpeg";
 	content_type_map[".png"]="image/png";
 	content_type_map[".js"]="text/javascript";
-	content_type_map[".m3u"]=="text/plain; charset=UTF-8";
-
+	content_type_map[".m3u"]="text/plain; charset=UTF-8";
+	content_type_map[".css"]="text/css";
 	allowed_files = get_allowed_files();
 
 	video_type=".stream";
