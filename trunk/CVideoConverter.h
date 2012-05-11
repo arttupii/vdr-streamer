@@ -25,6 +25,7 @@ typedef struct{
 	string description;
 	string folder;
 
+	string link;
 
 	string task_id;
 	bool task_isRunning;
@@ -34,6 +35,9 @@ typedef struct{
 	string task_source_folder;
 	string task_target_folder;
 	string task_target_file_name;
+	string task_info_file;
+
+	bool updated;
 } TaskInfo;
 
 
@@ -46,6 +50,7 @@ public:
 
 	static string startVideoConverting(string id);
 	static string stopVideoConverting(string id);
+	static string deleteVideoFile(string file);
 
 	static void startTask();
 
@@ -62,8 +67,9 @@ private:
 	static int writeToPosixQueue(string text);
 
 	void updateVideoInfoFromVdrDir();
+	void updateConvertedVideos();
 
-	
+	bool isTaskConverted(TaskInfo ti);
 
 	int getOngoingTaskCount();
 	void startNewTask(string id);
@@ -78,6 +84,7 @@ private:
 	int max_count_video_tasks;
 
 	list<TaskInfo> tasks;
+	list<TaskInfo> convertedFiles;
 	friend class Task;
 	friend void *runUpdateVdrFilesTask(void*);
 	CMutex mutex;

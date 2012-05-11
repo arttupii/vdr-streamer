@@ -173,7 +173,7 @@ void CVideoConverter::runTask()
 			string msg = params[0];
 			string id = params[1];
 
-			printf("CVideoConverter:: Received posix msg %s\n", buffer);
+			//printf("CVideoConverter:: Received posix msg %s\n", string(buffer,size).c_str());
 
 			if("CHECK_TASK_STATUS")
 			{
@@ -234,6 +234,7 @@ void CVideoConverter::runTask()
 						stringstream cmd;
 						cmd<<"rm -f \""<<(*it).task_target_folder<<"/"<<(*it).task_target_file_name<<"\"* ";
 						system(cmd.str().c_str());
+						updateConvertedVideos();
 					}
 					if((*it).task_status=="WAITING")
 					{
@@ -242,7 +243,30 @@ void CVideoConverter::runTask()
 					}
 				}
 			}
+			if(msg=="DELETE")
+			{
+				printf("CVideoConverter::Delete video file %s\n", id.c_str());
+				list<TaskInfo>::iterator it=convertedFiles.begin();
+				for(;it!=convertedFiles.end();it++)
+				{
+					if((*it).link == id )
+					{
+						int index = id.rfind(".");
+						string file;
+						if(string::npos!=index)
+						{
+							file = id.substr(0,index);
+						}
+						else
+						{
+							file = id;
+						}
+						printf("CVideoConverter::Delete video file  ----> file %s\n", file.c_str());
 
+						system(string(string("rm -f \"") + file + string("\"*")).c_str());
+					}
+				}
+			}
 			//task_pid_child
 
 			//Looping tasks if them are ready
@@ -257,6 +281,11 @@ void CVideoConverter::runTask()
 					{
 						update = true;
 						(*it).task_status="DONE";
+						stringstream cmd;
+						cmd<<"cp -f \""<<(*it).task_info_file<<"\" \""<<(*it).task_target_folder<<"/"<<(*it).task_target_file_name<<".info\"";
+						system(cmd.str().c_str());
+						printf("%s\n", cmd.str().c_str());
+						updateConvertedVideos();
 					}
 					
 				}
@@ -309,7 +338,13 @@ string CVideoConverter::startVideoConverting(string id)
 	else
 		return "error";
 }
-
+string CVideoConverter::deleteVideoFile(string file)
+{
+	if(writeToPosixQueue(string("DELETE;")+file)==0)
+		return "ok";
+	else
+		return "error";
+}
 void CVideoConverter::setVideoConvertingStatus(string id, string status)
 {
 	list<TaskInfo>::iterator it=findTaskInfo(id);
@@ -327,18 +362,19 @@ string CVideoConverter::getVideoConvertingStatus(string id)
 	}
 	return "";
 }
+
 list<TaskInfo>::iterator CVideoConverter::findTaskInfo(string id)
 {
-	list<TaskInfo>::iterator it=tasks.begin();
+        list<TaskInfo>::iterator it=tasks.begin();
 
-	for(;it!=tasks.end();it++)
-	{
-		if((*it).task_id==id)
-		{
-			return it;
-		}
-	}
-	return tasks.end();
+        for(;it!=tasks.end();it++)
+        {
+                if((*it).task_id==id)
+                {
+                        return it;
+                }
+        }
+        return tasks.end();
 }
 
 int CVideoConverter::getOngoingTaskCount()
@@ -355,9 +391,106 @@ int CVideoConverter::getOngoingTaskCount()
 	}
 	return ret;
 }
+
+void CVideoConverter::updateConvertedVideos()
+{
+	stringstream data;
+
+	//printf("CVideoConverter::updateConvertedVideos()  folder=%s\n", video_output_folder.c_str());
+	vector<string> filelist;
+	CCommon::get_file_list(filelist, video_output_folder.c_str());
+
+	const string infofile = ".info";
+	for(int i=0;i<filelist.size();i++)
+	{
+		string file = filelist[i];
+		ssize_t info_index = file.find(infofile);
+
+
+		if( (info_index + infofile.length()) == file.length() )
+		{
+			string file_name = file.substr(0,info_index);
+			vector<string> videoInfo = getInfo(video_output_folder + string("/") + file);
+			if(!videoInfo.empty())
+			{
+				string channel = videoInfo[0];
+				string info = videoInfo[1];
+				string name = videoInfo[2];
+				string description = videoInfo[3];
+
+				for(int x=0;x<filelist.size();x++)
+				{
+					if(filelist[x].find(file_name)!=string::npos)
+					{
+						if(filelist[x].find(".info")==string::npos)
+						{
+							//printf("CVideoConverter::updateConvertedVideos() %s\n", filelist[x].c_str());
+							string file = filelist[x];
+							list<TaskInfo>::iterator it=convertedFiles.begin();
+							bool found=false;
+							for(;it!=convertedFiles.end();it++)
+								{
+								if((*it).link==file)
+								{
+									found=true;
+									(*it).updated=true;
+								}
+							}
+							if(found==false)
+							{
+								TaskInfo t;
+								t.channel=channel;
+								t.name=file;
+								t.info=info;
+								t.description=description;
+								t.updated=true;
+								t.link = video_output_folder + file;
+								convertedFiles.push_back(t);
+							}
+							data<<name<<";"<<info<<";"<<name<<";"<<description<<";"<<video_output_folder + file;
+							break;
+						}
+					}
+				}
+
+			}
+		}
+	}
+	list<TaskInfo>::iterator it=convertedFiles.begin();
+	for(;it!=convertedFiles.end();it++)
+	{
+		if((*it).updated==false)
+		{
+			it = convertedFiles.erase(it);
+			continue;
+		}
+		(*it).updated=false;
+	}
+
+	FILE * pFile;
+	pFile = fopen ("./www/converted_videolist.txt","w");
+	if (pFile!=NULL)
+	{
+	    fputs (data.str().c_str(),pFile);
+	    fclose (pFile);
+	}
+}
+bool CVideoConverter::isTaskConverted(TaskInfo ti)
+{
+	list<TaskInfo>::iterator it=convertedFiles.begin();
+	for(;it!=convertedFiles.end();it++)
+	{
+		if((*it).channel==ti.channel && (*it).name == ti.name && (*it).info==ti.info && (*it).description==ti.description )
+		{
+			return true;
+		}
+	}
+	return false;
+}
 void CVideoConverter::updateVideoInfoFromVdrDir()
 {
-	printf("CVideoConverter::updateVideoInfoFromVdrDir()\n");
+	updateConvertedVideos();
+	//printf("CVideoConverter::updateVideoInfoFromVdrDir()\n");
 	vector<string> filelist;
 	CCommon::get_file_list(filelist, vdr_video_folder.c_str());
 
@@ -386,6 +519,15 @@ void CVideoConverter::updateVideoInfoFromVdrDir()
 					if((*it).folder==folder)
 					{
 						found=true;
+						(*it).updated=true;
+
+						if(!isTaskConverted((*it)))
+						{
+							if((*it).task_status!="ONGOING" && (*it).task_status!="WAITING")
+							{
+								(*it).task_status="IDLE";
+							}
+						}
 						break;
 					}
 				}
@@ -410,13 +552,31 @@ void CVideoConverter::updateVideoInfoFromVdrDir()
 					t.task_target_file_name = t.task_id + "_" + t.name;
 					t.task_pid="";
 					t.task_pid_child=-1;
+					t.task_info_file=vdr_video_folder + file;
+					t.updated=true;
+
+					if(isTaskConverted(t))
+					{
+						t.task_status="DONE";
+					}
 
 					tasks.push_back(t);
 				}
 			}
 		}
 	}
+	list<TaskInfo>::iterator it=tasks.begin();
+	for(;it!=tasks.end();it++)
+	{
+		if((*it).updated==false)
+		{
+			it = tasks.erase(it);
+			continue;
+		}
+		(*it).updated=false;
+	}
 }
+
 
 void CVideoConverter::write_status_to_disk()
 {
@@ -447,44 +607,41 @@ vector<string> CVideoConverter::getInfo(string file)
 	ifstream in;
 	in.open(file.c_str());
 
+	string channel, info, name, description;
+	bool ok=false;
 	if (in.is_open())
 	{
 		 while (!in.eof()) {
 			string x;
 			getline(in,x);
-		    tmp+=x;
+			switch(x[0])
+			{
+				case 'C':
+					channel=&x.c_str()[2];
+					break;
+				case 'E':
+					info=&x.c_str()[2];
+					break;
+				case 'T':
+					name=&x.c_str()[2];
+					ok=true;
+					break;
+				case 'D':
+					description=&x.c_str()[2];
+					break;
+			}
 		 }
 	}
 	in.close();
 
-	int x,y;
 	vector<string> v;
-
-	x=tmp.find(" ",3)+1;
-	y=tmp.find("E ");
-	if(x==string::npos || y==string::npos) return v;
-	string channel = tmp.substr(x, y-x);
-
-	x=tmp.find("E ")+2;
-	y=tmp.find("T ");
-	if(x==string::npos || y==string::npos) return v;
-	string info = tmp.substr(x, y-x);
-
-
-	x=tmp.find("T ")+2;
-	y=tmp.find("D ");
-	if(x==string::npos || y==string::npos) return v;
-	string name = tmp.substr(x, y-x);
-
-	x=tmp.find("D ")+2;
-	y=tmp.find("X ");
-	if(x==string::npos || y==string::npos) return v;
-	string description = tmp.substr(x, y-x);
-
-	v.push_back(converInfoString(channel));
-	v.push_back(converInfoString(info));
-	v.push_back(converInfoString(name));
-	v.push_back(converInfoString(description));
+	if(ok)
+	{
+		v.push_back(converInfoString(channel));
+		v.push_back(converInfoString(info));
+		v.push_back(converInfoString(name));
+		v.push_back(converInfoString(description));
+	}
 
 	return v;
 }
@@ -511,7 +668,7 @@ string CVideoConverter::converInfoString(string x)
 
 int CVideoConverter::writeToPosixQueue(string text)
 {
-	printf("Write to posix queue %s\n", text.c_str());
+	 //printf("Write to posix queue %s\n", text.c_str());
 	  struct mq_attr attr, old_attr;   // To store queue attributes
 	  mqd_t mqdes;             // Message queue descriptors
 	  unsigned int prio=0;               // Priority

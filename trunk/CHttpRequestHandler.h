@@ -34,7 +34,7 @@ private:
 
 	void handleGetPost();
 	int send_from_socket_to_another(int from, int to);
-	bool startStreamScript(const char input[], int port, const char pid_file[]);
+	bool startStreamScript(const char input[], int port, const char pid_file[], const char quality[]);
 	string handleCgiFile(string file);
 
 	void sendFile(string file);
@@ -51,6 +51,7 @@ private:
 	int content_length;
 	stringstream content;
 	string host;
+	string range;
 
 	string video_type;
 	int socket;
