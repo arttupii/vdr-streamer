@@ -20,13 +20,18 @@ function server_name(){
 	return url.substring(0,index);
 }
 
+function updateQuality(obj)
+{
+}
+
 function printChannels(data)
 {
 	document.write( "Server: " + server_name() + "<br>");
 	document.write("<a href=\"convert.html\">Convert videos to avi</a><br>");
+	document.write("<a href=\"converted_videos.html\">Converted videos</a><br><br>");
 
-	document.write("<a href=\"channels.txt\">channels.txt</a><br>");
-	document.write("<a href=\"playlist.m3u?serverUrl=" + server_name() + "\">playlist.m3u</a><br>");
+	document.write("<a onclick=\"updateQuality(this)\" href=\"channels.txt\">channels.txt</a><br>");
+	document.write("<a onclick=\"updateQuality(this)\" href=\"playlist.m3u?serverUrl=" + server_name() + "&quality=high\">playlist.m3u</a><br><br>");
 
 	var lines = data.split("\n");
 	for(var i=0;i<lines.length;i++)
@@ -34,7 +39,7 @@ function printChannels(data)
 		var params = lines[i].split(";");
 		document.write("<br><a href=\"");
 		document.write(params[1]);
-		document.write("\">");
+		document.write("quality=high\">");
 		document.write(params[0]);
 		document.write("</a>");
 	}

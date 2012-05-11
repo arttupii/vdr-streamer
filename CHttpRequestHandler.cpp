@@ -106,7 +106,7 @@ string CHttpRequestHandler::getVirtualFile(string file)
 		list<VdrLink>::iterator it = links.begin();
 		for(;it!=links.end();it++)
 		{
-			data<<(*it).name<<";"<<(*it).fileName<<"\n";
+			data<<(*it).name<<";"<<(*it).fileName<<"?"<<paramsLine()<<"\n";
 		}
 	}
 	if(file=="/playlist.m3u")
@@ -124,7 +124,7 @@ string CHttpRequestHandler::getVirtualFile(string file)
 			}
 			else
 			{
-				 data<<params["serverUrl"]<<"/"<<(*it).fileName<<"\n";
+				 data<<params["serverUrl"]<<"/"<<(*it).fileName<<"?"<<paramsLine()<<"\n";
 			}
 			i++;
                 }
@@ -143,6 +143,10 @@ string CHttpRequestHandler::getVirtualFile(string file)
 		else if(!params["stop"].empty())
 		{
 			data<<CVideoConverter::stopVideoConverting(params["stop"]);
+		}
+		else if(!params["delete"].empty())
+		{
+			data<<CVideoConverter::deleteVideoFile(params["delete"]);
 		}
 		else
 		{
@@ -172,10 +176,10 @@ int CHttpRequestHandler::send_from_socket_to_another(int from, int to)
 	return 0;
 }
 
-bool CHttpRequestHandler::startStreamScript(const char input[], int port, const char pid_file[])
+bool CHttpRequestHandler::startStreamScript(const char input[], int port, const char pid_file[], const char quality[])
 {
 	char buf[200];
-	snprintf(buf, sizeof(buf),"/bin/sh stream_script.sh %s %d %s", input, port, pid_file);
+	snprintf(buf, sizeof(buf),"/bin/sh stream_script.sh %s %d %s %s", input, port, pid_file, quality);
 	if(system(buf)==0)
 		return true;
 	return false;
@@ -196,7 +200,7 @@ bool CHttpRequestHandler::handleStreamFile(string file)
 			stringstream pid_file;
 			pid_file<<"pid_"<<this;
 			stringstream cmd;
-			cmd<<"/bin/sh stream_script.sh "<<link<<" "<<pid_file.str();
+			cmd<<"/bin/sh stream_script.sh "<<link<<" "<<pid_file.str()<<" "<<params["quality"];
 
 			printf("Open pipe\n");
 
@@ -373,7 +377,17 @@ void CHttpRequestHandler::sendFile(string file)
 	FILE * pFile=NULL;
 	unsigned int lSize=0;
 
-	if(file.find(".script")==string::npos)
+	ssize_t s=0,e=0;
+	ssize_t index = range.find("bytes=");
+	if(index!=string::npos && range.find("-")!=string::npos)
+	{
+		string start=range.substr(index+6, range.find("-")-index-6);
+		string stop=range.substr(range.find("-")+1);
+		s=atol(start.c_str());
+		e=atol(stop.c_str());
+	}
+
+	if(file.find(".cgi")==string::npos)
 	{
 		if(virtualFile.empty())
 		{
@@ -403,7 +417,7 @@ void CHttpRequestHandler::sendFile(string file)
 			header<<"HTTP/1.1 200 OK\r\n";
 			header<<"Server: Streamer\r\n";
 
-			header<<"Content-Length: "<<(virtualFile.empty()? lSize : virtualFile.size())<<"\r\n";
+			header<<"Content-Length: "<<(virtualFile.empty()? lSize-s : virtualFile.size())<<"\r\n";
 			header<<"Connection: close\r\n";
 			if(virtualFile.empty())
 			{
@@ -466,6 +480,10 @@ void CHttpRequestHandler::sendFile(string file)
 		{
 			char buffer[1024];
 			size_t read;
+			if(s>0)
+			{
+				fseek (pFile , s, SEEK_SET);
+			}
 			while((read=fread(buffer,1,sizeof(buffer),pFile))>0)
 			{
 				if(send_to_socket(socket, buffer, read)<=0) break;
@@ -483,6 +501,7 @@ void CHttpRequestHandler::clearParsetHeaderInfo()
 	content.str("");
 	host="";
 	params.clear();	
+	range="";
 }
 void CHttpRequestHandler::handleGetPost()
 {
@@ -584,6 +603,11 @@ void CHttpRequestHandler::handle()
 				{
 					host=line.substr(6);
 					printf("Host: %s\n", host.c_str());
+				}
+				else if(line.find("Range: ")==0)
+				{
+					range=line.substr(7);
+					printf("Range: %s\n", range.c_str());
 				}
 				else if (line.empty()) //http header handled
 				{
