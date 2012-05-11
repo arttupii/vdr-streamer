@@ -8,7 +8,8 @@
 
  </head>
     <body>
-	
+
+<div>	
 <script>
 
 var statuscolormap = {};
@@ -71,14 +72,17 @@ function printVideos(data)
 		document.write("<a onclick=\"delete_cmd(" + id + ", \'" + params[4] + "\')\"> Delete </a></div></div>");
 
 	}
+	document.write('</div>');
 }
-
-
 
 $.get("converted_videolist.txt",printVideos);
 
-
 </script>
+
+  
+
+
+
  </body>
 </html>
 
