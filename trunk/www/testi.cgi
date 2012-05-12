@@ -7,15 +7,16 @@ printf "\r\n"
 printf "<html><body>"
 
 read var1
+
+
+printf '<textarea rows="20" cols="100">'
+
 echo "params --> $var1"
 
 echo "HELLO WORLD"
 
-printf "<PLAINTEXT>"
-
 ls -l -R www/
 
-printf "</PLAINTEXT>"
-
+printf "</textarea>"
 printf "</body></html>"
 
