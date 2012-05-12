@@ -10,6 +10,8 @@
 
 <script>
 
+var quality = "high";
+
 function server_name(){
 	var url = window.location.href;
 	var index = url.lastIndexOf("/");
@@ -22,16 +24,46 @@ function server_name(){
 
 function updateQuality(obj)
 {
+	var d = document.getElementById(obj.id);
+	quality = d.options[d.selectedIndex].value;
+	//alert(quality);
+	$.get("channels.txt",printChannels);
 }
+
+function changeSelectByValue(ddlID, value) 
+{
+	var ddl = document.getElementById(ddlID);
+     	for (var i = 0; i < ddl.options.length; i++) 
+	{
+        	if (ddl.options[i].value == value) 
+		{
+             		if (ddl.selectedIndex != i) 
+			{
+                 		ddl.selectedIndex = i;
+             		}
+             	break;
+         }
+     }
+ }
 
 function printChannels(data)
 {
-	document.write( "Server: " + server_name() + "<br>");
+	document.body.innerHTML=""
+
+	document.write( "Server: " + server_name() + "<br><br>");
+
+	document.write('<div>Quality<select id=quality onchange="updateQuality(this)">');
+	document.write('<option value="high"">high</option>');
+	document.write('<option value="low">low</option>');
+	document.write('</select></div><br>');
+	changeSelectByValue("quality", quality);
+	
+
 	document.write("<a href=\"convert.html\">Convert videos to avi</a><br>");
 	document.write("<a href=\"converted_videos.html\">Converted videos</a><br><br>");
 
-	document.write("<a onclick=\"updateQuality(this)\" href=\"channels.txt\">channels.txt</a><br>");
-	document.write("<a onclick=\"updateQuality(this)\" href=\"playlist.m3u?serverUrl=" + server_name() + "&quality=high\">playlist.m3u</a><br><br>");
+	document.write("<a  href=\"channels.txt\">channels.txt</a><br>");
+	document.write("<a  href=\"playlist.m3u?serverUrl=" + server_name() + "&quality=" + quality + "\">playlist.m3u</a><br><br>");
 
 	var lines = data.split("\n");
 	for(var i=0;i<lines.length;i++)
@@ -39,13 +71,16 @@ function printChannels(data)
 		var params = lines[i].split(";");
 		document.write("<br><a href=\"");
 		document.write(params[1]);
-		document.write("quality=high\">");
+		document.write("quality=" + quality + "\">");
 		document.write(params[0]);
 		document.write("</a>");
 	}
 	
+
 }
+
 $.get("channels.txt",printChannels);
+
 </script>
  </body>
 </html>
