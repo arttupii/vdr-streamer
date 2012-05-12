@@ -58,6 +58,7 @@ public:
 	static void checkTaskStatus();
 private:
 	map<int, string> split(string text, char c);
+	string epocToHuman(string epoc);
 	void runTask();
 	void write_status_to_disk();
 

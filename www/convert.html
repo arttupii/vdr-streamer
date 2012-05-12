@@ -39,8 +39,13 @@ function changeItBackground(idObj)
 		document.getElementById(idObj.id).style.background = "BLUE";
 }
 
+function dummy(cc)
+{
+	//alert("DUMMY");
+}
 function doAction(idObj)
 {
+
 	if(document.getElementById("status_" + idObj.id).innerHTML=="WAITING" ||
 	document.getElementById("status_" + idObj.id).innerHTML=="ONGOING")
 	{
@@ -63,10 +68,12 @@ function doAction(idObj)
 				return;
 			}
 		}
-		$.get("convert.run?convert=" + idObj.id, null);
+
+		$.get("convert.run?convert=" + idObj.id, dummy);
 		document.getElementById(idObj.id).style.background = 'YELLOW';
 		statuscolormap[idObj.id]="YELLOW";
-		$.get("videolist.txt",updateStatus);
+		//$.get("videolist.txt",updateStatus);
+		//alert(idObj.id);
 	}
 }
 
@@ -77,7 +84,10 @@ function updateStatus(data)
 	for(var i=0;i<lines.length;i++)
 	{
 		var params = lines[i].split(";");
+		if(params.length<5) continue;
+
 		var info = params[1].split(" ");
+
 		
 		var date = epocToHuman(info[1]);
 		var length = info[2]/60;
@@ -87,9 +97,7 @@ function updateStatus(data)
 		var id = params[4];
 		var status = params[5];
 
-
-		
-		
+	
 		document.getElementById("status_" + id).innerHTML = status;
 		if(status=="ONGOING" || status=="WAITING" || status=="STOPPING")
 		{
@@ -123,6 +131,7 @@ function printVideos(data)
 	for(var i=0;i<lines.length;i++)
 	{
 		var params = lines[i].split(";");
+		if(params.length<5) continue;
 		var info = params[1].split(" ");
 		
 		var date = epocToHuman(info[1]);

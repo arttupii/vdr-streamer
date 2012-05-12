@@ -16,7 +16,7 @@
 #include <mqueue.h>
 #include <stdlib.h>
 
-#define POSIX_QUEUE "/Video_converter_queue"
+#define POSIX_QUEUE "/Video_converter_queue4"
 #define PID_FILE "CONVERT_PID.txt"
 sem_t task_sem;
 
@@ -148,7 +148,7 @@ void CVideoConverter::runTask()
 	attr.mq_msgsize = 300;
 	attr.mq_flags = 0;
 
-	//mq_unlink (POSIX_QUEUE);
+	mq_unlink (POSIX_QUEUE);
 
 	// Open a queue with the attribute structure
 	printf("CVideoConverter::open posix queue\n");
@@ -549,7 +549,11 @@ void CVideoConverter::updateVideoInfoFromVdrDir()
 					t.task_isRunning=false;
 					t.task_source_folder = vdr_video_folder + string("/") + folder;
 					t.task_target_folder = video_output_folder;
-					t.task_target_file_name = t.task_id + "_" + t.name;
+
+
+					//t.task_target_file_name = t.task_id + "_" + t.name;
+					t.task_target_file_name = epocToHuman(&info.c_str()[info.find(" ")+1]) + "_" + t.name;
+
 					t.task_pid="";
 					t.task_pid_child=-1;
 					t.task_info_file=vdr_video_folder + file;
@@ -668,7 +672,7 @@ string CVideoConverter::converInfoString(string x)
 
 int CVideoConverter::writeToPosixQueue(string text)
 {
-	 //printf("Write to posix queue %s\n", text.c_str());
+	  //printf("Write to posix queue %s\n", text.c_str());
 	  struct mq_attr attr, old_attr;   // To store queue attributes
 	  mqd_t mqdes;             // Message queue descriptors
 	  unsigned int prio=0;               // Priority
@@ -678,7 +682,7 @@ int CVideoConverter::writeToPosixQueue(string text)
 	  attr.mq_flags = 0;
 
 	  // Open a queue with the attribute structure
-	  mqdes = mq_open (POSIX_QUEUE, O_RDWR|O_CREAT, 0664, &attr);
+	  mqdes = mq_open (POSIX_QUEUE, O_RDWR, 0664, &attr);
 	  if(mqdes>0)
 	  {
 		 // mq_setattr  (mqdes, &attr, &old_attr);'
@@ -719,4 +723,14 @@ map<int, string> CVideoConverter::split(string text, char c)
 
 	}
 	return ret;
+}
+
+string CVideoConverter::epocToHuman(string epoc)
+{
+    time_t     now = atol(epoc.c_str());
+    struct tm  ts;
+    char       buf[80];
+    ts = *localtime(&now);
+    strftime(buf, sizeof(buf), "%a_%Y-%m-%d_%H:%M:%S", &ts);
+    return string(buf);
 }
