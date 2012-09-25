@@ -3,9 +3,11 @@
 INPUT=$1
 PIDFILE=$2
 QUALITY=$3
+MUX=ts
 
 printf "HTTP/1.0 200 OK\r\n"
-printf "Content-Type: video/x-ms-asf\r\n"
+#printf "Content-Type: video/x-ms-asf\r\n"
+printf "Content-Type: video/ogg\r\n"
 printf "Pragma: features=broadcast\r\n"
 printf "\r\n"
 
@@ -19,9 +21,9 @@ printf "\r\n"
 
 if [ "$QUALITY" = "high" ] 
 then
-	cvlc $INPUT  vlc://quit --sout-x264-quiet --sout-x264-preset=superfast -v 0 --sub-language fin,fi,suomi --audio-language fin,fi,suomi --sout '#transcode{vcodec=h264, scale=1,vb=800,acodec=mp3a,ab=128, soverlay, venc=x264{keyint=120,bpyramid,chroma-me,me-range=8,ref=1,ratetol=1.0,8x8dct,mixed-refs,direct=auto,direct-8x8=-1,non-deterministic,scenecut=50}}:standard{access=file,mux=ts,dst=-'} &
+	cvlc $INPUT  vlc://quit --sout-x264-quiet --sout-x264-preset=superfast -v 0 --sub-language fin,fi,suomi --audio-language fin,fi,suomi --sout '#transcode{vcodec=mp4v, scale=0.8,vb=700,acodec=mp4a,ab=128, soverlay, venc=x264{keyint=120,bpyramid,chroma-me,me-range=8,ref=1,ratetol=1.0,8x8dct,mixed-refs,direct=auto,direct-8x8=-1,non-deterministic,scenecut=50}}:standard{access=file,mux=$MUX,dst=-'} &
 else
-	cvlc $INPUT  vlc://quit --sout-x264-quiet --sout-x264-preset=superfast -v 0 --sub-language fin,fi,suomi --audio-language fin,fi,suomi --sout '#transcode{vcodec=h264, scale=0.5,vb=800,acodec=mp4a,ab=128, soverlay, venc=x264{keyint=120,bpyramid,chroma-me,me-range=8,ref=1,ratetol=1.0,8x8dct,mixed-refs,direct=auto,direct-8x8=-1,non-deterministic,scenecut=50}}:standard{access=file,mux=ts,dst=-'} &
+	cvlc $INPUT  vlc://quit --sout-x264-quiet --sout-x264-preset=superfast -v 0 --sub-language fin,fi,suomi --audio-language fin,fi,suomi --sout '#transcode{vcodec=h264, scale=0.5,vb=700,acodec=mp4a,ab=128, soverlay, venc=x264{keyint=120,bpyramid,chroma-me,me-range=8,ref=1,ratetol=1.0,8x8dct,mixed-refs,direct=auto,direct-8x8=-1,non-deterministic,scenecut=50}}:standard{access=file,mux=$MUX,dst=-'} &
 fi	
 
 #cvlc $INPUT -v 0 --sub-language fin,fi,suomi --audio-language fin,fi,suomi --sout transcode{vcodec=FLV1,acodec=mp3,vb=200,deinterlace,fps=25,samplerate=44100,ab=32}standart{access=http,mux=ffmpeg{mux=flv},dst=-}
