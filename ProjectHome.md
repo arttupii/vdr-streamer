@@ -1,0 +1,1 @@
+Vdr-streamer lets you send live TV over HTTP with subtitles.
